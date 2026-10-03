@@ -65,10 +65,17 @@ class ZendureSolarFlowHub extends IPSModule
         $this->RegisterPropertyInteger('InverterPowerVariable', 0);
         $this->RegisterPropertyInteger('DirectPVVariable', 0);
         $this->RegisterPropertyInteger('DirectPVVariable2', 0);
+        $this->RegisterPropertyInteger('InverterEnergyTodayVariable', 0);
+        // Kachel-Hintergrund
+        $this->RegisterPropertyString('TileBackground', 'scene'); // scene | image | none
+        $this->RegisterPropertyInteger('TileImage', 0);            // Medienobjekt (Bild)
+        $this->RegisterPropertyInteger('TileImageOpacity', 30);    // %
 
         $this->RegisterAttributeString('Packs', '[]');
         $this->RegisterAttributeInteger('MessageId', 0);
         $this->RegisterAttributeString('WatchedVariables', '[]');
+        $this->RegisterAttributeInteger('EnergyLastTs', 0);
+        $this->RegisterAttributeString('EnergyDay', '');
 
         // Eigene Kachel (HTML-SDK)
         $this->SetVisualizationType(1);
@@ -86,7 +93,7 @@ class ZendureSolarFlowHub extends IPSModule
             $this->UnregisterMessage((int) $vid, VM_UPDATE);
         }
         $watched = [];
-        foreach (['InverterPowerVariable', 'DirectPVVariable', 'DirectPVVariable2'] as $prop) {
+        foreach (['InverterPowerVariable', 'DirectPVVariable', 'DirectPVVariable2', 'InverterEnergyTodayVariable'] as $prop) {
             $vid = $this->ReadPropertyInteger($prop);
             if ($vid > 0 && IPS_VariableExists($vid)) {
                 $this->RegisterMessage($vid, VM_UPDATE);
@@ -97,11 +104,22 @@ class ZendureSolarFlowHub extends IPSModule
 
         $this->RegisterProfiles();
 
+        $image = $this->ReadPropertyInteger('TileImage');
+        if ($image > 0 && @IPS_MediaExists($image)) {
+            $this->RegisterReference($image);
+        }
+
         $this->RegisterVariableBoolean('Online', 'Online', '~Alert.Reversed', 0);
         $this->RegisterVariableInteger('LastUpdate', 'Letzte Meldung', '~UnixTimestamp', 1);
         $this->RegisterVariableInteger('BatteryPower', 'Akkuleistung (+ Laden / − Entladen)', 'ZEND.Watt', 33);
+        $this->RegisterVariableFloat('SolarEnergyToday', 'Solarertrag Hub heute', '~Electricity', 23);
+        $this->RegisterVariableFloat('BatteryTemperature', 'Akkutemperatur', '~Temperature', 44);
         $this->RegisterVariableInteger('DischargePower', 'Entladeleistung vorgeben', 'ZEND.OutputLimit', 49);
         $this->EnableAction('DischargePower');
+
+        if (IPS_GetKernelRunlevel() === KR_READY) {
+            $this->UpdateVisualizationValue(json_encode(['background' => $this->TileBackground()]));
+        }
 
         $deviceKey = trim($this->ReadPropertyString('DeviceKey'));
         if ($deviceKey === '' || $this->GetProductKey() === '') {
@@ -129,6 +147,7 @@ class ZendureSolarFlowHub extends IPSModule
     public function RequestUpdate(): void
     {
         $this->CheckOnline();
+        $this->AccumulateEnergy();
         $this->Publish('properties/read', ['properties' => ['getAll']]);
     }
 
@@ -289,6 +308,8 @@ class ZendureSolarFlowHub extends IPSModule
         }
 
         $props = $json['properties'] ?? [];
+        // Ertrag mit der bisherigen Leistung bis jetzt aufsummieren, bevor neue Werte gesetzt werden
+        $this->AccumulateEnergy();
         if (is_array($props)) {
             foreach ($props as $key => $value) {
                 if (!isset(self::PROPERTIES[$key]) || !is_numeric($value)) {
@@ -316,8 +337,19 @@ class ZendureSolarFlowHub extends IPSModule
             }
         }
 
-        if ($this->ReadPropertyBoolean('ShowPacks') && !empty($json['packData']) && is_array($json['packData'])) {
-            $this->HandlePacks($json['packData']);
+        if (!empty($json['packData']) && is_array($json['packData'])) {
+            $temps = [];
+            foreach ($json['packData'] as $pack) {
+                if (isset($pack['maxTemp']) && is_numeric($pack['maxTemp'])) {
+                    $temps[] = round(((float) $pack['maxTemp'] - 2731) / 10, 1);
+                }
+            }
+            if (count($temps) > 0) {
+                $this->SetValue('BatteryTemperature', max($temps));
+            }
+            if ($this->ReadPropertyBoolean('ShowPacks')) {
+                $this->HandlePacks($json['packData']);
+            }
         }
 
         $this->UpdateTile();
@@ -370,6 +402,29 @@ class ZendureSolarFlowHub extends IPSModule
         }
     }
 
+    /** Summiert die Solarleistung des Hubs zum Tagesertrag (kWh), Rücksetzung um Mitternacht. */
+    private function AccumulateEnergy(): void
+    {
+        $now = time();
+        $today = date('Y-m-d', $now);
+        if ($this->ReadAttributeString('EnergyDay') !== $today) {
+            $this->WriteAttributeString('EnergyDay', $today);
+            $this->SetValue('SolarEnergyToday', 0.0);
+            $this->WriteAttributeInteger('EnergyLastTs', $now);
+            return;
+        }
+        $last = $this->ReadAttributeInteger('EnergyLastTs');
+        $this->WriteAttributeInteger('EnergyLastTs', $now);
+        if ($last <= 0 || $now <= $last || !$this->GetValue('Online')) {
+            return;
+        }
+        $dt = min($now - $last, 600); // Lücken (z. B. offline) nicht hochrechnen
+        $power = $this->ValueOrZero('solarInputPower');
+        if ($power > 0) {
+            $this->SetValue('SolarEnergyToday', round($this->GetValue('SolarEnergyToday') + $power * $dt / 3600000, 4));
+        }
+    }
+
     private function CheckOnline(): void
     {
         $last = $this->GetValue('LastUpdate');
@@ -394,9 +449,164 @@ class ZendureSolarFlowHub extends IPSModule
 
     public function GetVisualizationTile()
     {
+        $state = $this->BuildTileState();
+        $state['background'] = $this->TileBackground();
         $html = file_get_contents(__DIR__ . '/tile.html');
-        return str_replace('__INITIAL_STATE__', json_encode($this->BuildTileState()), $html);
+        return str_replace('__INITIAL_STATE__', json_encode($state), $html);
     }
+
+    /** Hintergrund der Kachel: eingebaute Szene, eigenes Bild (Medienobjekt) oder keiner. */
+    private function TileBackground(): array
+    {
+        $mode = $this->ReadPropertyString('TileBackground');
+        $opacity = max(5, min(100, $this->ReadPropertyInteger('TileImageOpacity'))) / 100;
+        if ($mode === 'image') {
+            $media = $this->ReadPropertyInteger('TileImage');
+            if ($media > 0 && @IPS_MediaExists($media)) {
+                $uri = $this->TileImageData($media, 1600);
+                if ($uri !== '') {
+                    return ['mode' => 'image', 'image' => $uri, 'opacity' => $opacity];
+                }
+            }
+            $mode = 'scene';
+        }
+        return ['mode' => $mode === 'none' ? 'none' : 'scene', 'image' => null, 'opacity' => $opacity];
+    }
+
+    /**
+     * Bild als data-URI für die Kachel. Große Bilder werden verkleinert (längste Seite $maxSize px),
+     * damit die Kachel die Grenze der Visualisierung von 1 MB nicht überschreitet. Ergebnis wird zwischengespeichert.
+     */
+    private function TileImageData(int $media, int $maxSize): string
+    {
+        $content = (string) IPS_GetMediaContent($media); // Base64
+        if ($content === '') {
+            return '';
+        }
+        $key = md5($media . '|' . $maxSize . '|' . strlen($content) . '|' . substr($content, 0, 64) . '|' . substr($content, -64));
+        $cache = json_decode($this->GetBuffer('TileImage'), true) ?: [];
+        if (($cache['key'] ?? '') === $key) {
+            return (string) $cache['uri'];
+        }
+
+        $types = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif', 'svg' => 'image/svg+xml'];
+        $ext = strtolower(pathinfo((string) IPS_GetMedia($media)['MediaFile'], PATHINFO_EXTENSION));
+        $mime = $types[$ext] ?? 'image/jpeg';
+
+        $uri = '';
+        $problem = '';
+        $scaled = self::scaleImage($content, $mime, $maxSize);
+        if (isset($scaled['uri'])) {
+            $uri = $scaled['uri'];
+        } elseif (isset($scaled['error'])) {
+            $problem = sprintf('Kachelbild ist zu groß zum Verkleinern (%d × %d Pixel) – bitte ein kleineres Bild verwenden (z. B. max. 2000 Pixel breit).', $scaled['from'][0], $scaled['from'][1]);
+        } else {
+            $uri = "data:$mime;base64,$content";
+        }
+        unset($content);
+        if ($problem === '' && strlen($uri) > 700 * 1024) {
+            $problem = 'Kachelbild ist zu groß – bitte ein kleineres Bild verwenden (JPEG, max. ca. 500 kB).';
+            $uri = '';
+        }
+        if ($problem !== '') {
+            $this->SendDebug('Tile', $problem, 0);
+            $this->LogMessage($problem, KL_WARNING);
+        }
+        $this->SetBuffer('TileImage', json_encode(['key' => $key, 'uri' => $uri]));
+        return $uri;
+    }
+
+    public static function scaleImage(string $base64, string $mime, int $maxSize): ?array
+    {
+        $raw = base64_decode($base64, true);
+        if ($mime === 'image/svg+xml' || $raw === false || !function_exists('imagecreatefromstring')) {
+            return null;
+        }
+        $info = @getimagesizefromstring($raw);
+        if ($info === false || $info[0] <= 0 || $info[1] <= 0) {
+            return null;
+        }
+        [$w, $h] = $info;
+        if (max($w, $h) <= $maxSize && strlen($raw) <= 400 * 1024) {
+            return null; // schon klein genug
+        }
+        // Entpackt braucht das Bild ca. 5 Byte je Pixel. Symcon erlaubt Skripten meist nur 32 MB –
+        // vorher prüfen (und wenn möglich kurz anheben), statt mit einem Speicherfehler abzubrechen.
+        $scale = min(1.0, $maxSize / max($w, $h));
+        $need = (int) ($w * $h * 5.5 + ($w * $scale) * ($h * $scale) * 5 + strlen($raw) * 2 + 4 * 1024 * 1024);
+        $oldLimit = ini_get('memory_limit');
+        if (!self::ensureMemory($need)) {
+            return ['error' => 'memory', 'from' => [$w, $h]];
+        }
+        try {
+            $result = self::scaleDecoded($raw, $mime, $w, $h, $scale);
+        } finally {
+            if ($oldLimit !== false && function_exists('ini_set') && ini_get('memory_limit') !== $oldLimit) {
+                @ini_set('memory_limit', $oldLimit);
+            }
+        }
+        return $result;
+    }
+
+    private static function scaleDecoded(string $raw, string $mime, int $w, int $h, float $scale): ?array
+    {
+        $img = @imagecreatefromstring($raw);
+        if ($img === false) {
+            return null;
+        }
+        $nw = max(1, (int) round($w * $scale));
+        $nh = max(1, (int) round($h * $scale));
+        $out = imagecreatetruecolor($nw, $nh);
+        $alpha = in_array($mime, ['image/png', 'image/webp', 'image/gif'], true);
+        if ($alpha) {
+            imagealphablending($out, false);
+            imagesavealpha($out, true);
+            imagefill($out, 0, 0, imagecolorallocatealpha($out, 0, 0, 0, 127));
+        }
+        imagecopyresampled($out, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        ob_start();
+        $alpha ? imagepng($out, null, 9) : imagejpeg($out, null, 82);
+        $data = (string) ob_get_clean();
+        imagedestroy($img);
+        imagedestroy($out);
+        if ($data === '' || strlen($data) >= strlen($raw)) {
+            return null;
+        }
+        return ['uri' => 'data:' . ($alpha ? 'image/png' : 'image/jpeg') . ';base64,' . base64_encode($data), 'from' => [$w, $h], 'to' => [$nw, $nh]];
+    }
+
+    private static function ensureMemory(int $need): bool
+    {
+        $limit = self::bytes((string) ini_get('memory_limit'));
+        if ($limit < 0) {
+            return true; // unbegrenzt
+        }
+        $used = memory_get_usage(true);
+        if ($limit - $used >= $need) {
+            return true;
+        }
+        $wanted = $used + $need + 8 * 1024 * 1024;
+        if (!function_exists('ini_set') || @ini_set('memory_limit', (string) $wanted) === false) {
+            return false;
+        }
+        return self::bytes((string) ini_get('memory_limit')) >= $wanted;
+    }
+
+    private static function bytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-1') {
+            return -1;
+        }
+        $num = (int) $value;
+        switch (strtolower(substr($value, -1))) {
+            case 'g': return $num * 1024 * 1024 * 1024;
+            case 'm': return $num * 1024 * 1024;
+            case 'k': return $num * 1024;
+        }
+        return $num;
+    }
+
 
     private function UpdateTile(): void
     {
@@ -425,6 +635,9 @@ class ZendureSolarFlowHub extends IPSModule
             'bypass'          => (bool) $num('pass'),
             'inverter'        => $this->ReadLinkedPower('InverterPowerVariable'),
             'direct'          => $this->ReadDirectPower(),
+            'energyHub'       => round((float) ($num('SolarEnergyToday') ?? 0), 2),
+            'energyPlant'     => $this->ReadLinkedEnergy('InverterEnergyTodayVariable'),
+            'temp'            => $num('BatteryTemperature'),
         ];
     }
 
@@ -437,6 +650,24 @@ class ZendureSolarFlowHub extends IPSModule
             return null;
         }
         return (int) ($a ?? 0) + (int) ($b ?? 0);
+    }
+
+    /** Liest eine ausgewählte Energievariable in kWh (Wh-Profile werden umgerechnet). */
+    private function ReadLinkedEnergy(string $property): ?float
+    {
+        $vid = $this->ReadPropertyInteger($property);
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return null;
+        }
+        $value = (float) GetValue($vid);
+        $var = IPS_GetVariable($vid);
+        $profile = $var['VariableCustomProfile'] !== '' ? $var['VariableCustomProfile'] : $var['VariableProfile'];
+        if ($profile !== '' && IPS_VariableProfileExists($profile)) {
+            if (strcasecmp(trim(IPS_GetVariableProfile($profile)['Suffix']), 'Wh') === 0) {
+                $value /= 1000;
+            }
+        }
+        return round(max(0, $value), 2);
     }
 
     /** Liest eine ausgewählte Leistungsvariable in Watt (kW-Profile werden umgerechnet). */

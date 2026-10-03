@@ -52,15 +52,34 @@ Variablen werden angelegt, sobald der Hub den jeweiligen Wert meldet, u. a.:
 
 ## Kachel
 
-Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (ab Symcon 7): Energiefluss Solar → Hub ↔ Akku → Haus mit animierten Leitungen, Ladezustandsring, Lade-/Entladestatus und Restzeit.
+Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (ab Symcon 7):
 
-**Hoymiles-Wechselrichter einbinden:** Unter „Hoymiles-Wechselrichter“ in der Hub-Instanz die AC-Leistungsvariable aus dem Modul „Hoymiles Cloud“ auswählen. Die Kachel zeigt dann zusätzlich:
+- Energiefluss von links nach rechts: Solar und Akku → Hub → Haus, mit fließenden Lichtpunkten (schneller bei mehr Leistung) und Ladezustandsring am Akku
+- Info-Spalte mit Status (lädt / entlädt / Ruhezustand / offline), Ladezustand, Restzeit bzw. „Voll in“, Ertrag heute und Akkutemperatur
+- passt sich der Kachelgröße an: breite Kacheln mit Info-Spalte rechts, hohe Kacheln mit Infos darunter, kleine Kacheln kompakt
+- Platz für Titel und Vergrößern-Symbol der Visualisierung bleibt frei
+
+**Hintergrund** (Bereich „Kachel“ in der Hub-Instanz):
+
+| Einstellung | Wirkung |
+|---|---|
+| Szene (Standard) | eingebaute Illustration mit Haus, Solarmodulen und Speicher – tagsüber hell mit Sonne, nachts dunkel mit Mond und Sternen |
+| Eigenes Bild | ein Medienobjekt (Bild) über die ganze Kachel, abgeblendet; Sichtbarkeit einstellbar (empfohlen 20–40 %) |
+| Keiner | nur der Hintergrund der Visualisierung |
+
+Große Bilder werden automatisch verkleinert, damit die Kachel nicht zu groß wird.
+
+**Ertrag heute:** Der Hub meldet keinen Tagesertrag. Das Modul summiert deshalb die Solarleistung des Hubs selbst auf (Variable „Solarertrag Hub heute“, Rücksetzung um Mitternacht). Ist unter „Hoymiles-Wechselrichter“ der Tagesertrag der Anlage ausgewählt (z. B. „Ertrag heute“ aus dem Modul „Hoymiles Cloud“), zeigt die Kachel diesen.
+
+**Akkutemperatur:** höchste gemeldete Temperatur aller Akkus (Variable „Akkutemperatur“).
+
+**Hoymiles-Wechselrichter einbinden:** Unter „Hoymiles-Wechselrichter“ in der Hub-Instanz die Variable „Leistung“ aus dem Modul „Hoymiles Cloud“ als AC-Leistung auswählen. Die Kachel zeigt dann zusätzlich:
 
 - Hub → Wechselrichter (Ausgang des Hubs)
 - direkt angeschlossene Module → Wechselrichter
 - Wechselrichter → Haus (tatsächliche AC-Einspeisung)
 
-Für die direkt angeschlossenen Module können bis zu zwei Eingangs-Variablen gewählt werden (z. B. PV 1 und PV 3, wenn der Hub an PV 2 und PV 4 hängt). Sie werden addiert, und die Kachel zeigt dann auch den Wirkungsgrad an. Ohne diese Variable wird der Wert aus AC-Leistung und Hub-Ausgang geschätzt. Variablen mit kW-Profil werden automatisch in W umgerechnet.
+Für die direkt angeschlossenen Module können bis zu zwei Eingänge gewählt werden (z. B. „PV 1 Leistung“ und „PV 3 Leistung“, wenn der Hub an PV 2 und PV 4 hängt). Sie werden addiert, und die Kachel zeigt dann auch den Wirkungsgrad. Ohne diese Variablen wird der Wert aus AC-Leistung und Hub-Ausgang geschätzt. Werte in kW bzw. Wh werden automatisch umgerechnet.
 
 ## PHP-Befehle
 

@@ -75,8 +75,56 @@
                     "caption": "Direkt angeschlossener Eingang 2 (z. B. PV 3)"
                 },
                 {
+                    "type": "SelectVariable",
+                    "name": "InverterEnergyTodayVariable",
+                    "caption": "Ertrag heute der Anlage (z. B. „Ertrag heute“)"
+                },
+                {
                     "type": "Label",
                     "caption": "Ohne Eingangs-Variablen wird die direkte Solarleistung aus AC-Leistung und Hub-Ausgang geschätzt. Werte in kW werden automatisch umgerechnet."
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Kachel",
+            "items": [
+                {
+                    "type": "Select",
+                    "name": "TileBackground",
+                    "caption": "Hintergrund",
+                    "options": [
+                        {
+                            "caption": "Szene (eingebaut, Tag und Nacht)",
+                            "value": "scene"
+                        },
+                        {
+                            "caption": "Eigenes Bild (ganze Kachel, abgeblendet)",
+                            "value": "image"
+                        },
+                        {
+                            "caption": "Keiner",
+                            "value": "none"
+                        }
+                    ]
+                },
+                {
+                    "type": "SelectMedia",
+                    "name": "TileImage",
+                    "caption": "Eigenes Bild (Medienobjekt)",
+                    "width": "400px"
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "TileImageOpacity",
+                    "caption": "Sichtbarkeit des eigenen Bildes",
+                    "suffix": "%",
+                    "minimum": 5,
+                    "maximum": 100
+                },
+                {
+                    "type": "Label",
+                    "caption": "Das Bild im Objektbaum als Medienobjekt (Bild) hochladen und hier auswählen. Große Bilder werden automatisch verkleinert. Empfohlen sind 20–40 % Sichtbarkeit, z. B. ein Foto des Hauses oder der Solaranlage."
                 }
             ]
         }
