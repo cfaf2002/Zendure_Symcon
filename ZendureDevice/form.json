@@ -53,25 +53,30 @@
         },
         {
             "type": "ExpansionPanel",
-            "caption": "Wechselrichter (z. B. Hoymiles) – für die Kachel",
+            "caption": "Hoymiles-Wechselrichter – für die Kachel",
             "items": [
                 {
                     "type": "Label",
-                    "caption": "Optional: Leistungsvariablen des Wechselrichters, an dem der Hub hängt (Hoymiles-Modul, OpenDTU o. Ä.)."
+                    "caption": "Optional: Variablen aus dem Modul „Hoymiles Cloud“ des Wechselrichters, an dem der Hub hängt."
                 },
                 {
                     "type": "SelectVariable",
                     "name": "InverterPowerVariable",
-                    "caption": "AC-Leistung des Wechselrichters (W)"
+                    "caption": "AC-Leistung des Wechselrichters"
                 },
                 {
                     "type": "SelectVariable",
                     "name": "DirectPVVariable",
-                    "caption": "Leistung der direkt angeschlossenen Module (W, optional)"
+                    "caption": "Direkt angeschlossener Eingang 1 (z. B. PV 1)"
+                },
+                {
+                    "type": "SelectVariable",
+                    "name": "DirectPVVariable2",
+                    "caption": "Direkt angeschlossener Eingang 2 (z. B. PV 3)"
                 },
                 {
                     "type": "Label",
-                    "caption": "Ohne zweite Variable wird die direkte Solarleistung aus AC-Leistung und Hub-Ausgang geschätzt."
+                    "caption": "Ohne Eingangs-Variablen wird die direkte Solarleistung aus AC-Leistung und Hub-Ausgang geschätzt. Werte in kW werden automatisch umgerechnet."
                 }
             ]
         }

@@ -64,6 +64,7 @@ class ZendureSolarFlowHub extends IPSModule
         $this->RegisterPropertyBoolean('ShowPacks', true);
         $this->RegisterPropertyInteger('InverterPowerVariable', 0);
         $this->RegisterPropertyInteger('DirectPVVariable', 0);
+        $this->RegisterPropertyInteger('DirectPVVariable2', 0);
 
         $this->RegisterAttributeString('Packs', '[]');
         $this->RegisterAttributeInteger('MessageId', 0);
@@ -85,7 +86,7 @@ class ZendureSolarFlowHub extends IPSModule
             $this->UnregisterMessage((int) $vid, VM_UPDATE);
         }
         $watched = [];
-        foreach (['InverterPowerVariable', 'DirectPVVariable'] as $prop) {
+        foreach (['InverterPowerVariable', 'DirectPVVariable', 'DirectPVVariable2'] as $prop) {
             $vid = $this->ReadPropertyInteger($prop);
             if ($vid > 0 && IPS_VariableExists($vid)) {
                 $this->RegisterMessage($vid, VM_UPDATE);
@@ -423,8 +424,19 @@ class ZendureSolarFlowHub extends IPSModule
             'remainCharge'    => $num('remainInputTime'),
             'bypass'          => (bool) $num('pass'),
             'inverter'        => $this->ReadLinkedPower('InverterPowerVariable'),
-            'direct'          => $this->ReadLinkedPower('DirectPVVariable'),
+            'direct'          => $this->ReadDirectPower(),
         ];
+    }
+
+    /** Summe der direkt am Wechselrichter angeschlossenen Eingänge (null = nicht konfiguriert). */
+    private function ReadDirectPower(): ?int
+    {
+        $a = $this->ReadLinkedPower('DirectPVVariable');
+        $b = $this->ReadLinkedPower('DirectPVVariable2');
+        if ($a === null && $b === null) {
+            return null;
+        }
+        return (int) ($a ?? 0) + (int) ($b ?? 0);
     }
 
     /** Liest eine ausgewählte Leistungsvariable in Watt (kW-Profile werden umgerechnet). */

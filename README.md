@@ -54,13 +54,13 @@ Variablen werden angelegt, sobald der Hub den jeweiligen Wert meldet, u. a.:
 
 Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (ab Symcon 7): Energiefluss Solar → Hub ↔ Akku → Haus mit animierten Leitungen, Ladezustandsring, Lade-/Entladestatus und Restzeit.
 
-**Wechselrichter einbinden (z. B. Hoymiles HMS):** Unter „Wechselrichter“ in der Hub-Instanz die AC-Leistungsvariable des Wechselrichters auswählen (aus dem Hoymiles-Modul, OpenDTU o. Ä.). Die Kachel zeigt dann zusätzlich:
+**Hoymiles-Wechselrichter einbinden:** Unter „Hoymiles-Wechselrichter“ in der Hub-Instanz die AC-Leistungsvariable aus dem Modul „Hoymiles Cloud“ auswählen. Die Kachel zeigt dann zusätzlich:
 
 - Hub → Wechselrichter (Ausgang des Hubs)
 - direkt angeschlossene Module → Wechselrichter
 - Wechselrichter → Haus (tatsächliche AC-Einspeisung)
 
-Für die direkt angeschlossenen Module kann eine eigene Leistungsvariable gewählt werden (z. B. Summe der DC-Eingänge ohne Hub). Dann wird auch der Wirkungsgrad angezeigt. Ohne diese Variable wird der Wert aus AC-Leistung und Hub-Ausgang geschätzt. Variablen mit kW-Profil werden automatisch in W umgerechnet.
+Für die direkt angeschlossenen Module können bis zu zwei Eingangs-Variablen gewählt werden (z. B. PV 1 und PV 3, wenn der Hub an PV 2 und PV 4 hängt). Sie werden addiert, und die Kachel zeigt dann auch den Wirkungsgrad an. Ohne diese Variable wird der Wert aus AC-Leistung und Hub-Ausgang geschätzt. Variablen mit kW-Profil werden automatisch in W umgerechnet.
 
 ## PHP-Befehle
 
