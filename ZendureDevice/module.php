@@ -9,7 +9,7 @@ declare(strict_types=1);
  *
  * Autor: Armin Frohwerk
  */
-class ZendureDevice extends IPSModule
+class ZendureSolarFlowHub extends IPSModule
 {
     private const MQTT_TX = '{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}';
 
