@@ -27,6 +27,49 @@
         background: linear-gradient(180deg, rgba(10, 13, 20, .35) 0%, rgba(10, 13, 20, .05) 35%, rgba(10, 13, 20, .45) 100%); }
     .hidden { display: none !important; }
 
+    /* Aurora: weiche Farbwolken, Punkteraster, Linien-Haus */
+    #bgAurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+        background: radial-gradient(120% 90% at 0% 0%, #1a2233 0%, #0d1119 55%, #080b11 100%); transition: background 1.5s; }
+    #bgAurora.night { background: radial-gradient(120% 90% at 0% 0%, #161631 0%, #0b0b1c 55%, #06060f 100%); }
+    .blob { position: absolute; border-radius: 50%; filter: blur(48px); opacity: .0; transition: opacity 1.6s ease, background 1.6s ease;
+        will-change: transform; mix-blend-mode: screen; }
+    .b1 { width: 62vmax; height: 62vmax; left: -18vmax; top: -24vmax; background: radial-gradient(circle, #ffb547 0%, rgba(255,140,40,0) 65%); animation: drift1 26s ease-in-out infinite alternate; }
+    .b2 { width: 58vmax; height: 58vmax; left: -14vmax; bottom: -30vmax; background: radial-gradient(circle, #2fe0b0 0%, rgba(30,190,200,0) 65%); animation: drift2 31s ease-in-out infinite alternate; }
+    .b3 { width: 66vmax; height: 66vmax; right: -26vmax; top: 6vmax; background: radial-gradient(circle, #4f8dff 0%, rgba(110,90,255,0) 65%); animation: drift3 37s ease-in-out infinite alternate; }
+    .b4 { width: 50vmax; height: 50vmax; right: 6vmax; top: -30vmax; background: radial-gradient(circle, #9b6bff 0%, rgba(155,107,255,0) 65%); animation: drift2 43s ease-in-out infinite alternate-reverse; }
+    #bgAurora.night .b1 { background: radial-gradient(circle, #6a5cff 0%, rgba(106,92,255,0) 65%); }
+    @keyframes drift1 { to { transform: translate(8vmax, 6vmax) scale(1.12); } }
+    @keyframes drift2 { to { transform: translate(10vmax, -6vmax) scale(.92); } }
+    @keyframes drift3 { to { transform: translate(-9vmax, 5vmax) scale(1.08); } }
+    .grid { position: absolute; inset: 0; opacity: .5;
+        background-image: radial-gradient(rgba(255,255,255,.12) 1px, transparent 1.2px); background-size: 18px 18px;
+        -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%, #000 70%, transparent 100%);
+        mask-image: linear-gradient(180deg, transparent 0%, #000 45%, #000 70%, transparent 100%); }
+    /* Sonne / Mond am echten Himmelsbogen */
+    .arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .arc path { fill: none; stroke: rgba(255, 220, 150, .22); stroke-width: 1.2; stroke-dasharray: 2 5; vector-effect: non-scaling-stroke; }
+    #bgAurora.night .arc path { stroke: rgba(170, 180, 255, .16); }
+    .sun, .moon { position: absolute; transform: translate(-50%, -50%); transition: left 2s ease, top 2s ease, opacity 1.5s; }
+    .sun { width: 30vmin; height: 30vmin; border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 214, 120, .55) 0%, rgba(255, 170, 60, .22) 35%, rgba(255, 150, 40, 0) 70%); }
+    .sun .core { position: absolute; left: 50%; top: 50%; width: 22%; height: 22%; transform: translate(-50%, -50%); border-radius: 50%;
+        background: radial-gradient(circle at 40% 38%, #fffbe8 0%, #ffe28a 45%, #ffb547 100%);
+        box-shadow: 0 0 2.2vmin 1vmin rgba(255, 200, 90, .55), 0 0 7vmin 3vmin rgba(255, 160, 50, .25); }
+    .sun::after { content: ""; position: absolute; inset: 14%; border-radius: 50%;
+        background: repeating-conic-gradient(from 0deg, rgba(255, 225, 150, .16) 0deg 4deg, transparent 4deg 22deg);
+        -webkit-mask-image: radial-gradient(circle, transparent 18%, #000 30%, transparent 70%);
+        mask-image: radial-gradient(circle, transparent 18%, #000 30%, transparent 70%);
+        animation: spin 90s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .moon { width: 6vmin; height: 6vmin; border-radius: 50%; box-shadow: inset -1.7vmin .7vmin 0 0 #e8ecff;
+        filter: drop-shadow(0 0 2.2vmin rgba(160, 175, 255, .55)); }
+    #stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: .5; animation: tw 4s ease-in-out infinite; }
+    @keyframes tw { 50% { opacity: .1; } }
+    #bgAurora:not(.night) #stars, #bgAurora:not(.night) .moon, #bgAurora.night .sun { opacity: 0; }
+    .noise { position: absolute; inset: 0; opacity: .06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    @media (prefers-reduced-motion: reduce) { .blob, .sun::after, #stars i { animation: none; } }
+
     /* Platz für Titel und Vergrößern-Symbol, die Symcon über die Kachel legt */
     .app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column;
         padding: clamp(34px, 10vh, 62px) clamp(8px, 2.5vw, 18px) clamp(8px, 2.5vh, 16px); }
@@ -85,6 +128,18 @@
     .tagBg { fill: rgba(20, 24, 32, .8); stroke: var(--track); }
 </style>
 
+<div id="bgAurora" class="hidden">
+    <div class="blob b1" id="blobPv"></div>
+    <div class="blob b2" id="blobBat"></div>
+    <div class="blob b3" id="blobHome"></div>
+    <div class="blob b4"></div>
+    <div class="grid"></div>
+    <svg class="arc" viewBox="0 0 100 100" preserveAspectRatio="none"><path id="arcPath" d=""/></svg>
+    <div id="stars"></div>
+    <div id="sun" class="sun"><div class="core"></div></div>
+    <div id="moon" class="moon"></div>
+    <div class="noise"></div>
+</div>
 <div id="bgScene" class="hidden"></div>
 <div id="bgImg" class="hidden"></div>
 <div id="bgShade" class="hidden"></div>
@@ -163,12 +218,22 @@
             '</svg>';
     }
 
-    function applyBackground(bg, day) {
+    function applyBackground(bg, day, energy) {
         if (bg) bgMode = bg.mode || 'none';
         var scene = document.getElementById('bgScene'), img = document.getElementById('bgImg'), shade = document.getElementById('bgShade');
+        var aurora = document.getElementById('bgAurora');
         scene.classList.toggle('hidden', bgMode !== 'scene');
         img.classList.toggle('hidden', bgMode !== 'image');
-        shade.classList.toggle('hidden', bgMode === 'none');
+        aurora.classList.toggle('hidden', bgMode !== 'aurora');
+        shade.classList.toggle('hidden', bgMode === 'none' || bgMode === 'aurora');
+        if (bgMode === 'aurora') placeSky(energy ? energy.pv : 0);
+        if (bgMode === 'aurora' && energy) {
+            // Farbwolken leuchten je nach Energiefluss
+            var lvl = function (w, full) { return Math.min(1, Math.sqrt(Math.max(0, w) / full)); };
+            document.getElementById('blobPv').style.opacity = String(day ? .18 + .5 * lvl(energy.pv, 1200) : .35);
+            document.getElementById('blobBat').style.opacity = String(.16 + .45 * lvl(energy.bat, 800));
+            document.getElementById('blobHome').style.opacity = String(.14 + .4 * lvl(energy.home, 1000));
+        }
         if (bg && bgMode === 'image' && bg.image) {
             img.style.backgroundImage = 'url("' + bg.image + '")';
             img.style.opacity = String(bg.opacity);
@@ -179,6 +244,52 @@
             scene.style.opacity = day ? '.55' : '.7';
         }
     }
+
+
+    // ---------- Sonne und Mond am Himmelsbogen ----------
+    var sky = { rise: null, set: null, pv: 0 };
+    function arcPoint(t) {               // t = 0..1 über den Bogen, Ergebnis in % der Kachel
+        return { x: 7 + t * 86, y: 74 - Math.sin(Math.PI * t) * 58 };
+    }
+    function buildArc() {
+        var d = '';
+        for (var i = 0; i <= 40; i++) { var p = arcPoint(i / 40); d += (i ? ' L' : 'M') + p.x.toFixed(2) + ' ' + p.y.toFixed(2); }
+        document.getElementById('arcPath').setAttribute('d', d);
+        var st = document.getElementById('stars'), html = '';
+        for (var k = 0; k < 28; k++) {
+            html += '<i style="left:' + ((k * 37.3) % 100).toFixed(1) + '%;top:' + ((k * 23.9) % 62).toFixed(1) + '%;animation-delay:' + (k % 7) * .6 + 's;opacity:' + (.25 + (k % 4) * .15) + '"></i>';
+        }
+        st.innerHTML = html;
+    }
+    function sunTimes() {
+        var now = new Date(), rise, set;
+        if (sky.rise && sky.set) { rise = new Date(sky.rise * 1000); set = new Date(sky.set * 1000); }
+        else { rise = new Date(now); rise.setHours(7, 0, 0, 0); set = new Date(now); set.setHours(19, 0, 0, 0); }
+        // Standort-Zeiten können vom Vortag/Folgetag stammen: auf heute legen
+        rise.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+        set.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+        return { now: now.getTime(), rise: rise.getTime(), set: set.getTime() };
+    }
+    function placeSky(pv) {
+        if (pv !== undefined) sky.pv = pv;
+        if (!document.getElementById('arcPath').getAttribute('d')) buildArc();
+        var t = sunTimes(), day = t.now >= t.rise && t.now <= t.set;
+        var sun = document.getElementById('sun'), moon = document.getElementById('moon');
+        var aurora = document.getElementById('bgAurora');
+        aurora.classList.toggle('night', !day);
+        if (day) {
+            var p = arcPoint((t.now - t.rise) / (t.set - t.rise));
+            sun.style.left = p.x + '%'; sun.style.top = p.y + '%';
+            sun.style.opacity = String(.35 + .65 * Math.min(1, Math.sqrt(Math.max(0, sky.pv) / 1200)));
+        } else {
+            var nightLen = 86400000 - (t.set - t.rise);
+            var since = t.now > t.set ? t.now - t.set : t.now + 86400000 - t.set;
+            var q = arcPoint(Math.min(1, since / nightLen));
+            moon.style.left = q.x + '%'; moon.style.top = q.y + '%';
+        }
+        return day;
+    }
+    setInterval(function () { if (bgMode === 'aurora') placeSky(); }, 60000);
 
     // ---------- Energiefluss ----------
     var ICON = {
@@ -397,7 +508,10 @@
         // Tag, solange die Sonne liefert (sonst Uhrzeit)
         var hour = new Date().getHours();
         var day = (pv + direct) > 5 || (pv + direct === 0 && hour >= 7 && hour < 19 && s.online === false);
-        applyBackground(s.background, day);
+        if (has(s.sunrise) && has(s.sunset)) { sky.rise = s.sunrise; sky.set = s.sunset; }
+        var tt = sunTimes();
+        if (s.sunrise) day = tt.now >= tt.rise && tt.now <= tt.set;
+        applyBackground(s.background, day, { pv: pv + direct, bat: Math.abs(bat), home: hasInv ? ac : out });
     }
 
     var state = {};

@@ -95,7 +95,11 @@
                     "caption": "Hintergrund",
                     "options": [
                         {
-                            "caption": "Szene (eingebaut, Tag und Nacht)",
+                            "caption": "Aurora (modern, reagiert auf den Energiefluss)",
+                            "value": "aurora"
+                        },
+                        {
+                            "caption": "Szene (Haus, Tag und Nacht)",
                             "value": "scene"
                         },
                         {

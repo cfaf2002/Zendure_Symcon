@@ -63,7 +63,8 @@ Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (ab
 
 | Einstellung | Wirkung |
 |---|---|
-| Szene (Standard) | eingebaute Illustration mit Haus, Solarmodulen und Speicher – tagsüber hell mit Sonne, nachts dunkel mit Mond und Sternen |
+| Aurora (Standard) | moderner, dunkler Hintergrund mit weich wandernden Farbwolken und Punkteraster. Die Sonne wandert über einen feinen Tagesbogen am echten Sonnenstand (Sonnenauf- und -untergang aus der Standort-Instanz von Symcon, sonst 7–19 Uhr) und strahlt umso kräftiger, je mehr Solarleistung anliegt. Nachts zieht eine Mondsichel ihren Bogen, dazu funkeln Sterne. Die Farbwolken leuchten je nach Energiefluss: gelb bei Solarleistung, türkis beim Laden/Entladen, blau bei der Einspeisung ins Haus. |
+| Szene | eingebaute Illustration mit Haus, Solarmodulen und Speicher – tagsüber hell mit Sonne, nachts dunkel mit Mond und Sternen |
 | Eigenes Bild | ein Medienobjekt (Bild) über die ganze Kachel, abgeblendet; Sichtbarkeit einstellbar (empfohlen 20–40 %) |
 | Keiner | nur der Hintergrund der Visualisierung |
 

@@ -67,7 +67,7 @@ class ZendureSolarFlowHub extends IPSModule
         $this->RegisterPropertyInteger('DirectPVVariable2', 0);
         $this->RegisterPropertyInteger('InverterEnergyTodayVariable', 0);
         // Kachel-Hintergrund
-        $this->RegisterPropertyString('TileBackground', 'scene'); // scene | image | none
+        $this->RegisterPropertyString('TileBackground', 'aurora'); // aurora | scene | image | none
         $this->RegisterPropertyInteger('TileImage', 0);            // Medienobjekt (Bild)
         $this->RegisterPropertyInteger('TileImageOpacity', 30);    // %
 
@@ -468,9 +468,12 @@ class ZendureSolarFlowHub extends IPSModule
                     return ['mode' => 'image', 'image' => $uri, 'opacity' => $opacity];
                 }
             }
-            $mode = 'scene';
+            $mode = 'aurora';
         }
-        return ['mode' => $mode === 'none' ? 'none' : 'scene', 'image' => null, 'opacity' => $opacity];
+        if (!in_array($mode, ['aurora', 'scene', 'none'], true)) {
+            $mode = 'aurora';
+        }
+        return ['mode' => $mode, 'image' => null, 'opacity' => $opacity];
     }
 
     /**
@@ -638,7 +641,22 @@ class ZendureSolarFlowHub extends IPSModule
             'energyHub'       => round((float) ($num('SolarEnergyToday') ?? 0), 2),
             'energyPlant'     => $this->ReadLinkedEnergy('InverterEnergyTodayVariable'),
             'temp'            => $num('BatteryTemperature'),
+            'sunrise'         => $this->LocationTime('Sunrise'),
+            'sunset'          => $this->LocationTime('Sunset'),
         ];
+    }
+
+    /** Sonnenauf-/-untergang aus der Standort-Instanz von Symcon (null, wenn keine vorhanden). */
+    private function LocationTime(string $ident): ?int
+    {
+        foreach (IPS_GetInstanceListByModuleID('{45E97A63-F870-408A-B259-2933F7EABF74}') as $id) {
+            $vid = @IPS_GetObjectIDByIdent($ident, $id);
+            if ($vid !== false && $vid > 0) {
+                $v = (int) GetValue($vid);
+                return $v > 0 ? $v : null;
+            }
+        }
+        return null;
     }
 
     /** Summe der direkt am Wechselrichter angeschlossenen Eingänge (null = nicht konfiguriert). */
