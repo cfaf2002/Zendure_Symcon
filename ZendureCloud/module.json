@@ -1,0 +1,16 @@
+{
+    "id": "{AEE5084B-5CC2-4B5B-8BD2-62308EB3845B}",
+    "name": "Zendure Cloud",
+    "type": 2,
+    "vendor": "Zendure",
+    "aliases": ["Zendure Cloud", "Zendure Konto"],
+    "parentRequirements": ["{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}"],
+    "childRequirements": ["{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}"],
+    "implemented": [
+        "{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}",
+        "{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}",
+        "{E66E03E9-BA01-44EA-B561-88D3C300C517}"
+    ],
+    "prefix": "ZENDC",
+    "url": "https://github.com/cfaf2002/Zendure_Symcon"
+}

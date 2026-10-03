@@ -1,0 +1,12 @@
+{
+    "id": "{960BF271-A04F-47AA-947F-26B07829F093}",
+    "name": "Zendure Konfigurator",
+    "type": 4,
+    "vendor": "Zendure",
+    "aliases": ["Zendure Konfigurator"],
+    "parentRequirements": ["{E66E03E9-BA01-44EA-B561-88D3C300C517}"],
+    "childRequirements": [],
+    "implemented": ["{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}"],
+    "prefix": "ZENDK",
+    "url": "https://github.com/cfaf2002/Zendure_Symcon"
+}

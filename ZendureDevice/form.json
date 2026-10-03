@@ -1,0 +1,68 @@
+{
+    "elements": [
+        {
+            "type": "Select",
+            "name": "Model",
+            "caption": "Modell",
+            "options": [
+                { "caption": "SolarFlow Hub 2000", "value": "Hub 2000" },
+                { "caption": "SolarFlow Hub 1200", "value": "Hub 1200" }
+            ]
+        },
+        {
+            "type": "ValidationTextBox",
+            "name": "ProductKey",
+            "caption": "Product Key (leer = Standard des Modells)"
+        },
+        {
+            "type": "ValidationTextBox",
+            "name": "DeviceKey",
+            "caption": "Device Key"
+        },
+        {
+            "type": "ValidationTextBox",
+            "name": "SerialNumber",
+            "caption": "Seriennummer (nur Info)"
+        },
+        {
+            "type": "NumberSpinner",
+            "name": "UpdateInterval",
+            "caption": "Alle Werte abfragen alle",
+            "suffix": "Sekunden",
+            "minimum": 10,
+            "maximum": 3600
+        },
+        {
+            "type": "NumberSpinner",
+            "name": "MaxOutputPower",
+            "caption": "Maximale Ausgangsleistung",
+            "suffix": "W",
+            "minimum": 100,
+            "maximum": 2400
+        },
+        {
+            "type": "CheckBox",
+            "name": "ShowPacks",
+            "caption": "Werte der einzelnen Akkus anlegen"
+        }
+    ],
+    "actions": [
+        {
+            "type": "Button",
+            "caption": "Alle Werte jetzt abfragen",
+            "onClick": "ZEND_RequestUpdate($id);"
+        },
+        {
+            "type": "RowLayout",
+            "items": [
+                { "type": "NumberSpinner", "name": "TestPower", "caption": "Ausgangsleistung", "suffix": "W", "minimum": 0, "maximum": 2400 },
+                { "type": "Button", "caption": "Als Limit setzen", "onClick": "echo ZEND_SetOutputLimit($id, $TestPower) ? 'Gesendet.' : 'Senden fehlgeschlagen.';" },
+                { "type": "Button", "caption": "Als Entladeleistung vorgeben", "onClick": "echo ZEND_SetDischargePower($id, $TestPower) ? 'Gesendet.' : 'Senden fehlgeschlagen.';" }
+            ]
+        }
+    ],
+    "status": [
+        { "code": 102, "icon": "active", "caption": "Bereit" },
+        { "code": 104, "icon": "inactive", "caption": "Bitte Device Key (und ggf. Product Key) eintragen" }
+    ]
+}
