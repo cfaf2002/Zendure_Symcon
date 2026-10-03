@@ -86,9 +86,7 @@ class ZendureConfigurator extends IPSModule
             ];
         }
 
-        $hint = $this->HasActiveParent()
-            ? 'Gefundene Geräte im Zendure-Konto:'
-            : 'Die übergeordnete Instanz "Zendure Cloud" ist nicht aktiv – bitte Cloud-Key prüfen.';
+        $hint = $this->CloudStatusText();
 
         return json_encode([
             'elements' => [],
@@ -120,16 +118,53 @@ class ZendureConfigurator extends IPSModule
         ]);
     }
 
+    /**
+     * Fragt die Zendure-Cloud-Instanz direkt ab (unabhängig davon, ob MQTT schon verbunden ist).
+     */
     private function Request(string $function): array
     {
-        if (!$this->HasActiveParent()) {
+        $cloudID = $this->GetCloudID();
+        if ($cloudID === 0) {
             return [];
         }
-        $result = $this->SendDataToParent(json_encode([
-            'DataID'   => self::CONFIG_TX,
-            'Function' => $function,
-        ]));
-        $list = json_decode((string) $result, true);
+        try {
+            if ($function === 'Refresh') {
+                @ZENDC_RefreshDevices($cloudID);
+            }
+            $list = json_decode((string) @ZENDC_GetDevices($cloudID), true);
+        } catch (Throwable $e) {
+            $this->SendDebug('Request', $e->getMessage(), 0);
+            return [];
+        }
         return is_array($list) ? $list : [];
+    }
+
+    private function GetCloudID(): int
+    {
+        $parentID = (int) IPS_GetInstance($this->InstanceID)['ConnectionID'];
+        if ($parentID > 0 && IPS_GetInstance($parentID)['ModuleInfo']['ModuleID'] === self::CLOUD_GUID) {
+            return $parentID;
+        }
+        return 0;
+    }
+
+    private function CloudStatusText(): string
+    {
+        $cloudID = $this->GetCloudID();
+        if ($cloudID === 0) {
+            return 'Keine Instanz "Zendure Cloud" als Gateway verbunden.';
+        }
+        switch (IPS_GetInstance($cloudID)['InstanceStatus']) {
+            case 102:
+                return 'Gefundene Geräte im Zendure-Konto:';
+            case 104:
+                return 'In der Instanz "Zendure Cloud" (#' . $cloudID . ') ist noch kein Cloud-Key eingetragen.';
+            case 201:
+                return 'Der Cloud-Key wurde von Zendure abgelehnt oder ist unvollständig – bitte in "Zendure Cloud" (#' . $cloudID . ') neu einfügen.';
+            case 202:
+                return 'Die Zendure-Cloud ist nicht erreichbar – Internetverbindung von Symcon prüfen.';
+            default:
+                return 'Status der Instanz "Zendure Cloud" (#' . $cloudID . '): ' . IPS_GetInstance($cloudID)['InstanceStatus'];
+        }
     }
 }
