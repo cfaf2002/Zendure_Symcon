@@ -1,0 +1,248 @@
+<style>
+    :root {
+        --zd-pv: #f5c242;
+        --zd-bat: #5fe0b5;
+        --zd-home: #4ea3ff;
+        --zd-hub: #e9ecf1;
+        --zd-line: rgba(140, 150, 165, 0.35);
+        --zd-node: rgba(30, 35, 45, 0.92);
+        --zd-text: var(--content-color, #e9ecf1);
+        --zd-muted: rgba(160, 170, 185, 0.9);
+    }
+    html, body { margin: 0; padding: 0; height: 100%; background: transparent; }
+    body {
+        font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--zd-text);
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+    .zd-head { padding: 8px 10px 0; text-align: center; }
+    .zd-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 999px;
+        background: rgba(95, 224, 181, 0.16); color: var(--zd-bat);
+        font-size: 13px; font-weight: 600; white-space: nowrap;
+    }
+    .zd-chip.charge { background: rgba(95, 224, 181, 0.16); color: var(--zd-bat); }
+    .zd-chip.idle { background: rgba(160, 170, 185, 0.16); color: var(--zd-muted); }
+    .zd-chip.offline { background: rgba(255, 90, 90, 0.16); color: #ff7b7b; }
+    .zd-sub { margin-top: 4px; font-size: 12px; color: var(--zd-muted); min-height: 15px; }
+    .zd-sub b { color: var(--zd-bat); font-weight: 600; }
+    .zd-sub .short { display: none; }
+    @media (max-width: 260px) {
+        .zd-chip { font-size: 11px; padding: 3px 9px; }
+        .zd-sub .long { display: none; }
+        .zd-sub .short { display: inline; }
+    }
+    .zd-svg { flex: 1; min-height: 0; width: 100%; }
+
+    .line { fill: none; stroke: var(--zd-line); stroke-width: 3; stroke-linecap: round; }
+    .flow { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 12; opacity: 0; transition: opacity .4s; }
+    .flow.on { opacity: 1; animation: zdflow 1.1s linear infinite; }
+    .flow.rev.on { animation-direction: reverse; }
+    @keyframes zdflow { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
+
+    .node { fill: var(--zd-node); stroke-width: 2.5; }
+    .glow { opacity: .35; transition: opacity .4s; }
+    .glow.off { opacity: 0; }
+    .val { font-size: 17px; font-weight: 600; text-anchor: middle; }
+    .lbl { font-size: 11.5px; text-anchor: middle; fill: var(--zd-muted); }
+    .ring-bg { fill: none; stroke: rgba(95, 224, 181, 0.15); stroke-width: 4; }
+    .ring { fill: none; stroke: var(--zd-bat); stroke-width: 4; stroke-linecap: round;
+            transform: rotate(-90deg); transform-origin: center; transform-box: fill-box; transition: stroke-dashoffset .6s; }
+</style>
+
+<div class="zd-head">
+    <span id="chip" class="zd-chip idle">–</span>
+    <div id="sub" class="zd-sub"></div>
+</div>
+
+<svg id="svg" class="zd-svg" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet">
+    <defs>
+        <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+    </defs>
+
+    <!-- Leitungen -->
+    <path class="line" d="M 98 62 H 128 Q 146 62 146 80 V 128"/>
+    <path class="line" d="M 202 62 H 172 Q 154 62 154 80 V 128"/>
+    <path id="fPv"  class="flow" stroke="var(--zd-pv)"  d="M 98 62 H 128 Q 146 62 146 80 V 128"/>
+    <path id="fBat" class="flow" stroke="var(--zd-bat)" d="M 202 62 H 172 Q 154 62 154 80 V 128"/>
+
+    <!-- ohne Wechselrichter: Hub -> Haus -->
+    <g id="noInv">
+        <path class="line" d="M 150 186 V 222"/>
+        <path id="fHome" class="flow" stroke="var(--zd-hub)" d="M 150 186 V 222"/>
+    </g>
+
+    <!-- mit Wechselrichter: Hub -> WR <- Direkt-PV, WR -> Haus -->
+    <g id="inv" style="display:none">
+        <path class="line" d="M 150 186 V 224"/>
+        <path class="line" d="M 96 252 H 122"/>
+        <path class="line" d="M 150 280 V 318"/>
+        <path id="fHubInv"  class="flow" stroke="var(--zd-hub)"  d="M 150 186 V 224"/>
+        <path id="fDirect"  class="flow" stroke="var(--zd-pv)"   d="M 96 252 H 122"/>
+        <path id="fInvHome" class="flow" stroke="var(--zd-home)" d="M 150 280 V 318"/>
+        <text id="vHubOut" x="158" y="209" font-size="11" fill="var(--zd-muted)">– W</text>
+
+        <!-- Direkt-PV -->
+        <circle id="gDirect" class="glow" cx="62" cy="252" r="36" fill="var(--zd-pv)" filter="url(#blur)"/>
+        <circle class="node" cx="62" cy="252" r="34" stroke="var(--zd-pv)"/>
+        <g transform="translate(50 226)" fill="var(--zd-pv)">
+            <circle cx="12" cy="5" r="4"/>
+            <path d="M2 12 h20 l2 9 h-24 z" opacity=".95"/>
+            <path d="M11 21 h2 v4 h-2 z"/>
+        </g>
+        <text id="vDirect" class="val" x="62" y="270" fill="var(--zd-pv)">– W</text>
+        <text class="lbl" x="62" y="304">Solar direkt</text>
+
+        <!-- Wechselrichter -->
+        <circle class="node" cx="150" cy="252" r="28" stroke="rgba(233,236,241,.55)"/>
+        <g transform="translate(137 238)" fill="none" stroke="var(--zd-hub)" stroke-width="2" stroke-linecap="round">
+            <rect x="1" y="1" width="24" height="26" rx="3"/>
+            <path d="M5 14 q3 -6 6 0 t6 0 t6 0"/>
+        </g>
+        <text id="lInv" x="186" y="250" font-size="11.5" fill="var(--zd-muted)">Wechselrichter</text>
+        <text id="vEff" x="186" y="264" font-size="11" fill="var(--zd-muted)"></text>
+    </g>
+
+    <!-- Solar am Hub -->
+    <circle id="gPv" class="glow" cx="62" cy="62" r="36" fill="var(--zd-pv)" filter="url(#blur)"/>
+    <circle class="node" cx="62" cy="62" r="34" stroke="var(--zd-pv)"/>
+    <g transform="translate(50 36)" fill="var(--zd-pv)">
+        <circle cx="12" cy="5" r="4"/>
+        <path d="M2 12 h20 l2 9 h-24 z" opacity=".95"/>
+        <path d="M11 21 h2 v4 h-2 z"/>
+    </g>
+    <text id="vPv" class="val" x="62" y="80" fill="var(--zd-pv)">– W</text>
+    <text id="lPv" class="lbl" x="62" y="114">Solar</text>
+
+    <!-- Akku -->
+    <circle id="gBat" class="glow" cx="238" cy="62" r="36" fill="var(--zd-bat)" filter="url(#blur)"/>
+    <circle class="node" cx="238" cy="62" r="34" stroke="var(--zd-line)"/>
+    <circle class="ring-bg" cx="238" cy="62" r="34"/>
+    <circle id="ring" class="ring" cx="238" cy="62" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+    <g transform="translate(227 34)" fill="var(--zd-bat)">
+        <rect x="0" y="3" width="22" height="16" rx="2.5"/>
+        <rect x="7" y="0" width="8" height="3" rx="1"/>
+        <path d="M12 6 l-5 7 h4 l-1 5 l5 -7 h-4 z" fill="var(--zd-node)"/>
+    </g>
+    <text id="vBat" class="val" x="238" y="73" fill="var(--zd-bat)">– W</text>
+    <text id="vSoc" x="238" y="88" text-anchor="middle" font-size="11" fill="var(--zd-muted)">– %</text>
+    <text id="lBat" class="lbl" x="238" y="114">Akku</text>
+
+    <!-- Hub -->
+    <circle class="node" cx="150" cy="157" r="29" stroke="rgba(233,236,241,.55)"/>
+    <g transform="translate(135 145)" fill="var(--zd-hub)">
+        <rect x="3" y="2" width="24" height="18" rx="3"/>
+        <rect x="0" y="9" width="3" height="4" rx="1"/>
+        <rect x="27" y="9" width="3" height="4" rx="1"/>
+        <path d="M16 5 l-5 7 h4 l-1 5 l5 -7 h-4 z" fill="var(--zd-node)"/>
+    </g>
+
+    <!-- Haus -->
+    <g id="homeG">
+        <circle id="gHome" class="glow" cx="150" cy="256" r="36" fill="var(--zd-home)" filter="url(#blur)"/>
+        <circle class="node" cx="150" cy="256" r="34" stroke="var(--zd-home)"/>
+        <g transform="translate(138 228)" fill="var(--zd-home)">
+            <path d="M12 0 L24 10 V24 H0 V10 Z"/>
+            <path d="M13 8 l-5 7 h4 l-1 5 l5 -7 h-4 z" fill="var(--zd-node)"/>
+        </g>
+        <text id="vHome" class="val" x="150" y="275" fill="var(--zd-home)">– W</text>
+    </g>
+</svg>
+
+<script>
+    function fmtW(w) {
+        w = Math.abs(Math.round(w || 0));
+        return w >= 1000 ? (w / 1000).toFixed(2).replace('.', ',') + ' kW' : w + ' W';
+    }
+    function fmtTime(min) {
+        if (min === null || min === undefined || min <= 0 || min >= 59940) return '';
+        var h = Math.floor(min / 60), m = min % 60;
+        return (h > 0 ? h + ' Std. ' : '') + m + ' Min.';
+    }
+    function set(id, txt) { document.getElementById(id).textContent = txt; }
+    function setW(id, w) {
+        var el = document.getElementById(id);
+        el.textContent = fmtW(w);
+        el.style.fontSize = Math.abs(w || 0) >= 1000 ? '14px' : '';
+    }
+    function flow(id, on, rev) {
+        var el = document.getElementById(id);
+        el.classList.toggle('on', !!on);
+        el.classList.toggle('rev', !!rev);
+    }
+    function glow(id, on) { document.getElementById(id).classList.toggle('off', !on); }
+
+    function render(s) {
+        var pv = s.solar || 0, home = s.home || 0, bat = s.battery || 0, soc = s.soc;
+        var charging = bat > 0, discharging = bat < 0;
+
+        setW('vPv', pv);
+        setW('vHome', home);
+        setW('vBat', bat);
+        set('vSoc', soc === null || soc === undefined ? '– %' : soc + ' %');
+        set('lBat', 'Akku' + (s.packs > 1 ? ' | ' + s.packs + 'x' : ''));
+
+        var ring = document.getElementById('ring');
+        var c = 2 * Math.PI * 34;
+        ring.setAttribute('stroke-dashoffset', String(c * (1 - Math.max(0, Math.min(100, soc || 0)) / 100)));
+
+        var hasInv = s.inverter !== null && s.inverter !== undefined;
+        document.getElementById('inv').style.display = hasInv ? '' : 'none';
+        document.getElementById('noInv').style.display = hasInv ? 'none' : '';
+        document.getElementById('homeG').setAttribute('transform', hasInv ? 'translate(0 96)' : '');
+        document.getElementById('svg').setAttribute('viewBox', hasInv ? '0 0 300 396' : '0 0 300 300');
+        set('lPv', hasInv ? 'Solar am Hub' : 'Solar');
+
+        flow('fPv', pv > 0);
+        flow('fBat', bat !== 0, charging);
+        glow('gPv', pv > 0);
+        glow('gBat', bat !== 0);
+
+        if (hasInv) {
+            var ac = s.inverter || 0;
+            var direct = (s.direct === null || s.direct === undefined) ? Math.max(0, Math.round(ac / 0.96 - home)) : s.direct;
+            setW('vHome', ac);
+            setW('vDirect', direct);
+            set('vHubOut', fmtW(home));
+            flow('fHubInv', home > 0);
+            flow('fDirect', direct > 0);
+            flow('fInvHome', ac > 0);
+            glow('gDirect', direct > 0);
+            glow('gHome', ac > 0);
+            var dcIn = home + direct;
+            set('vEff', s.direct !== null && s.direct !== undefined && ac > 20 && dcIn > 20 ? 'Wirkungsgrad ' + Math.min(100, Math.round(ac / dcIn * 100)) + ' %' : '');
+        } else {
+            flow('fHome', home > 0);
+            glow('gHome', home > 0);
+        }
+
+        var chip = document.getElementById('chip');
+        var sub = '';
+        chip.className = 'zd-chip';
+        if (!s.online) {
+            chip.classList.add('offline');
+            chip.textContent = 'Offline';
+        } else if (charging) {
+            chip.classList.add('charge');
+            chip.textContent = 'Ladevorgang  |  Akku ' + (soc ?? '–') + ' %';
+            var t = fmtTime(s.remainCharge);
+            if (t) sub = 'Voll in: <b>' + t + '</b>';
+        } else if (discharging) {
+            chip.textContent = 'Entladevorgang  |  Akku ' + (soc ?? '–') + ' %';
+            var t2 = fmtTime(s.remainDischarge);
+            if (t2) sub = '<span class="long">Verbleibende Entladezeit: </span><span class="short">Rest: </span><b>' + t2 + '</b>';
+        } else {
+            chip.classList.add('idle');
+            chip.textContent = 'Ruhezustand  |  Akku ' + (soc ?? '–') + ' %';
+        }
+        if (s.bypass) sub = (sub ? sub + ' · ' : '') + 'Bypass aktiv';
+        document.getElementById('sub').innerHTML = sub;
+    }
+
+    function handleMessage(data) {
+        try { render(typeof data === 'string' ? JSON.parse(data) : data); } catch (e) {}
+    }
+
+    render(__INITIAL_STATE__);
+</script>

@@ -5,8 +5,14 @@
             "name": "Model",
             "caption": "Modell",
             "options": [
-                { "caption": "SolarFlow Hub 2000", "value": "Hub 2000" },
-                { "caption": "SolarFlow Hub 1200", "value": "Hub 1200" }
+                {
+                    "caption": "SolarFlow Hub 2000",
+                    "value": "Hub 2000"
+                },
+                {
+                    "caption": "SolarFlow Hub 1200",
+                    "value": "Hub 1200"
+                }
             ]
         },
         {
@@ -44,6 +50,30 @@
             "type": "CheckBox",
             "name": "ShowPacks",
             "caption": "Werte der einzelnen Akkus anlegen"
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Wechselrichter (z. B. Hoymiles) – für die Kachel",
+            "items": [
+                {
+                    "type": "Label",
+                    "caption": "Optional: Leistungsvariablen des Wechselrichters, an dem der Hub hängt (Hoymiles-Modul, OpenDTU o. Ä.)."
+                },
+                {
+                    "type": "SelectVariable",
+                    "name": "InverterPowerVariable",
+                    "caption": "AC-Leistung des Wechselrichters (W)"
+                },
+                {
+                    "type": "SelectVariable",
+                    "name": "DirectPVVariable",
+                    "caption": "Leistung der direkt angeschlossenen Module (W, optional)"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Ohne zweite Variable wird die direkte Solarleistung aus AC-Leistung und Hub-Ausgang geschätzt."
+                }
+            ]
         }
     ],
     "actions": [
@@ -55,14 +85,37 @@
         {
             "type": "RowLayout",
             "items": [
-                { "type": "NumberSpinner", "name": "TestPower", "caption": "Ausgangsleistung", "suffix": "W", "minimum": 0, "maximum": 2400 },
-                { "type": "Button", "caption": "Als Limit setzen", "onClick": "echo ZEND_SetOutputLimit($id, $TestPower) ? 'Gesendet.' : 'Senden fehlgeschlagen.';" },
-                { "type": "Button", "caption": "Als Entladeleistung vorgeben", "onClick": "echo ZEND_SetDischargePower($id, $TestPower) ? 'Gesendet.' : 'Senden fehlgeschlagen.';" }
+                {
+                    "type": "NumberSpinner",
+                    "name": "TestPower",
+                    "caption": "Ausgangsleistung",
+                    "suffix": "W",
+                    "minimum": 0,
+                    "maximum": 2400
+                },
+                {
+                    "type": "Button",
+                    "caption": "Als Limit setzen",
+                    "onClick": "echo ZEND_SetOutputLimit($id, $TestPower) ? 'Gesendet.' : 'Senden fehlgeschlagen.';"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Als Entladeleistung vorgeben",
+                    "onClick": "echo ZEND_SetDischargePower($id, $TestPower) ? 'Gesendet.' : 'Senden fehlgeschlagen.';"
+                }
             ]
         }
     ],
     "status": [
-        { "code": 102, "icon": "active", "caption": "Bereit" },
-        { "code": 104, "icon": "inactive", "caption": "Bitte Device Key (und ggf. Product Key) eintragen" }
+        {
+            "code": 102,
+            "icon": "active",
+            "caption": "Bereit"
+        },
+        {
+            "code": 104,
+            "icon": "inactive",
+            "caption": "Bitte Device Key (und ggf. Product Key) eintragen"
+        }
     ]
 }

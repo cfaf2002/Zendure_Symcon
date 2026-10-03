@@ -62,9 +62,15 @@ class ZendureSolarFlowHub extends IPSModule
         $this->RegisterPropertyInteger('UpdateInterval', 60);
         $this->RegisterPropertyInteger('MaxOutputPower', 1200);
         $this->RegisterPropertyBoolean('ShowPacks', true);
+        $this->RegisterPropertyInteger('InverterPowerVariable', 0);
+        $this->RegisterPropertyInteger('DirectPVVariable', 0);
 
         $this->RegisterAttributeString('Packs', '[]');
         $this->RegisterAttributeInteger('MessageId', 0);
+        $this->RegisterAttributeString('WatchedVariables', '[]');
+
+        // Eigene Kachel (HTML-SDK)
+        $this->SetVisualizationType(1);
 
         $this->RegisterTimer('Poll', 0, 'ZEND_RequestUpdate($_IPS[\'TARGET\']);');
         // Gateway: "Zendure Cloud" (Cloud-Betrieb) oder direkt ein MQTT Server/Client (lokaler Betrieb)
@@ -73,6 +79,20 @@ class ZendureSolarFlowHub extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+
+        // Wechselrichter-Variablen (z. B. Hoymiles) für die Kachel beobachten
+        foreach (json_decode($this->ReadAttributeString('WatchedVariables'), true) ?: [] as $vid) {
+            $this->UnregisterMessage((int) $vid, VM_UPDATE);
+        }
+        $watched = [];
+        foreach (['InverterPowerVariable', 'DirectPVVariable'] as $prop) {
+            $vid = $this->ReadPropertyInteger($prop);
+            if ($vid > 0 && IPS_VariableExists($vid)) {
+                $this->RegisterMessage($vid, VM_UPDATE);
+                $watched[] = $vid;
+            }
+        }
+        $this->WriteAttributeString('WatchedVariables', json_encode($watched));
 
         $this->RegisterProfiles();
 
@@ -298,6 +318,8 @@ class ZendureSolarFlowHub extends IPSModule
         if ($this->ReadPropertyBoolean('ShowPacks') && !empty($json['packData']) && is_array($json['packData'])) {
             $this->HandlePacks($json['packData']);
         }
+
+        $this->UpdateTile();
     }
 
     private function HandlePacks(array $packs): void
@@ -354,7 +376,74 @@ class ZendureSolarFlowHub extends IPSModule
         $online = $last > 0 && (time() - $last) <= $timeout;
         if ($this->GetValue('Online') !== $online) {
             $this->SetValue('Online', $online);
+            $this->UpdateTile();
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Kachel
+    // ---------------------------------------------------------------------
+
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        if ($Message === VM_UPDATE) {
+            $this->UpdateTile();
+        }
+    }
+
+    public function GetVisualizationTile()
+    {
+        $html = file_get_contents(__DIR__ . '/tile.html');
+        return str_replace('__INITIAL_STATE__', json_encode($this->BuildTileState()), $html);
+    }
+
+    private function UpdateTile(): void
+    {
+        $this->UpdateVisualizationValue(json_encode($this->BuildTileState()));
+    }
+
+    private function BuildTileState(): array
+    {
+        $num = function (string $ident) {
+            $id = @IPS_GetObjectIDByIdent($ident, $this->InstanceID);
+            return ($id !== false && $id > 0) ? GetValue($id) : null;
+        };
+        $packs = $num('packNum');
+        if ($packs === null) {
+            $packs = count(json_decode($this->ReadAttributeString('Packs'), true) ?: []);
+        }
+        return [
+            'online'          => (bool) $num('Online'),
+            'solar'           => (int) ($num('solarInputPower') ?? 0),
+            'home'            => (int) ($num('outputHomePower') ?? 0),
+            'battery'         => (int) ($num('BatteryPower') ?? 0),
+            'soc'             => $num('electricLevel'),
+            'packs'           => (int) $packs,
+            'remainDischarge' => $num('remainOutTime'),
+            'remainCharge'    => $num('remainInputTime'),
+            'bypass'          => (bool) $num('pass'),
+            'inverter'        => $this->ReadLinkedPower('InverterPowerVariable'),
+            'direct'          => $this->ReadLinkedPower('DirectPVVariable'),
+        ];
+    }
+
+    /** Liest eine ausgewählte Leistungsvariable in Watt (kW-Profile werden umgerechnet). */
+    private function ReadLinkedPower(string $property): ?int
+    {
+        $vid = $this->ReadPropertyInteger($property);
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return null;
+        }
+        $value = (float) GetValue($vid);
+        $var = IPS_GetVariable($vid);
+        $profile = $var['VariableCustomProfile'] !== '' ? $var['VariableCustomProfile'] : $var['VariableProfile'];
+        if ($profile !== '' && IPS_VariableProfileExists($profile)) {
+            $suffix = trim(IPS_GetVariableProfile($profile)['Suffix']);
+            if (strcasecmp($suffix, 'kW') === 0) {
+                $value *= 1000;
+            }
+        }
+        return (int) round(max(0, $value));
     }
 
     // ---------------------------------------------------------------------
