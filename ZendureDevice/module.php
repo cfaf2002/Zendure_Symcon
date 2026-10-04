@@ -9,7 +9,7 @@ declare(strict_types=1);
  *
  * Autor: Armin Frohwerk
  */
-class ZendureSolarFlowHub extends IPSModule
+class ZendureSolarFlowHub extends IPSModuleStrict
 {
     private const MQTT_TX = '{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}';
 
@@ -20,38 +20,38 @@ class ZendureSolarFlowHub extends IPSModule
 
     /**
      * Bekannte Eigenschaften des Hubs.
-     * ident => [Name, Typ, Profil, Position, Umrechnung, schreibbar]
+     * ident => [Name, Typ, Darstellung, Position, Umrechnung, schreibbar]
      * Typ: 0 Boolean, 1 Integer, 2 Float. Umrechnung: Divisor oder Spezialfall.
      */
     private const PROPERTIES = [
-        'electricLevel'   => ['Ladezustand', 1, 'ZEND.SoC', 10, 1, false],
-        'solarInputPower' => ['PV-Leistung', 1, 'ZEND.Watt', 20, 1, false],
-        'solarPower1'     => ['PV-Leistung Eingang 1', 1, 'ZEND.Watt', 21, 1, false],
-        'solarPower2'     => ['PV-Leistung Eingang 2', 1, 'ZEND.Watt', 22, 1, false],
-        'outputHomePower' => ['Ausgang zum Haus', 1, 'ZEND.Watt', 30, 1, false],
-        'outputPackPower' => ['Ladeleistung Akku', 1, 'ZEND.Watt', 31, 1, false],
-        'packInputPower'  => ['Entladeleistung Akku', 1, 'ZEND.Watt', 32, 1, false],
-        'packState'       => ['Akkustatus', 1, 'ZEND.PackState', 40, 1, false],
-        'remainOutTime'   => ['Restlaufzeit Entladen', 1, 'ZEND.Minutes', 41, 1, false],
-        'remainInputTime' => ['Restzeit Laden', 1, 'ZEND.Minutes', 42, 1, false],
-        'packNum'         => ['Anzahl Akkus', 1, '', 43, 1, false],
-        'outputLimit'     => ['Ausgangsleistung (Limit)', 1, 'ZEND.OutputLimit', 50, 1, true],
-        'inputLimit'      => ['Eingangsleistung (Limit)', 1, 'ZEND.OutputLimit', 51, 1, true],
-        'socSet'          => ['Ladegrenze', 1, 'ZEND.SocMax', 52, 10, true],
-        'minSoc'          => ['Entladegrenze', 1, 'ZEND.SocMin', 53, 10, true],
-        'passMode'        => ['Bypass-Modus', 1, 'ZEND.PassMode', 54, 1, true],
-        'autoRecover'     => ['Bypass automatisch zurücksetzen', 0, '~Switch', 55, 1, true],
-        'buzzerSwitch'    => ['Signalton', 0, '~Switch', 56, 1, true],
-        'pass'            => ['Bypass aktiv', 0, '', 60, 1, false],
-        'masterSwitch'    => ['Hauptschalter', 0, '', 61, 1, false],
-        'hubState'        => ['Verhalten bei leerem Akku', 1, 'ZEND.HubState', 62, 1, false],
-        'inverseMaxPower' => ['Max. Wechselrichterleistung', 1, 'ZEND.Watt', 63, 1, false],
-        'heatState'       => ['Akkuheizung aktiv', 0, '', 64, 1, false],
-        'wifiState'       => ['WLAN verbunden', 0, '', 65, 1, false],
-        'rssi'            => ['WLAN-Signal', 1, 'ZEND.dBm', 66, 1, false],
+        'electricLevel'   => ['Ladezustand', 1, 'soc', 10, 1, false],
+        'solarInputPower' => ['PV-Leistung', 1, 'solar', 20, 1, false],
+        'solarPower1'     => ['PV-Leistung Eingang 1', 1, 'solar', 21, 1, false],
+        'solarPower2'     => ['PV-Leistung Eingang 2', 1, 'solar', 22, 1, false],
+        'outputHomePower' => ['Ausgang zum Haus', 1, 'home', 30, 1, false],
+        'outputPackPower' => ['Ladeleistung Akku', 1, 'charge', 31, 1, false],
+        'packInputPower'  => ['Entladeleistung Akku', 1, 'discharge', 32, 1, false],
+        'packState'       => ['Akkustatus', 1, 'packState', 40, 1, false],
+        'remainOutTime'   => ['Restlaufzeit Entladen', 1, 'minutes', 41, 1, false],
+        'remainInputTime' => ['Restzeit Laden', 1, 'minutes', 42, 1, false],
+        'packNum'         => ['Anzahl Akkus', 1, 'count', 43, 1, false],
+        'outputLimit'     => ['Ausgangsleistung (Limit)', 1, 'limit', 50, 1, true],
+        'inputLimit'      => ['Eingangsleistung (Limit)', 1, 'limit', 51, 1, true],
+        'socSet'          => ['Ladegrenze', 1, 'socMax', 52, 10, true],
+        'minSoc'          => ['Entladegrenze', 1, 'socMin', 53, 10, true],
+        'passMode'        => ['Bypass-Modus', 1, 'passMode', 54, 1, true],
+        'autoRecover'     => ['Bypass automatisch zurücksetzen', 0, 'switch', 55, 1, true],
+        'buzzerSwitch'    => ['Signalton', 0, 'switch', 56, 1, true],
+        'pass'            => ['Bypass aktiv', 0, 'bypass', 60, 1, false],
+        'masterSwitch'    => ['Hauptschalter', 0, 'power', 61, 1, false],
+        'hubState'        => ['Verhalten bei leerem Akku', 1, 'hubState', 62, 1, false],
+        'inverseMaxPower' => ['Max. Wechselrichterleistung', 1, 'watt', 63, 1, false],
+        'heatState'       => ['Akkuheizung aktiv', 0, 'heat', 64, 1, false],
+        'wifiState'       => ['WLAN verbunden', 0, 'wifiOn', 65, 1, false],
+        'rssi'            => ['WLAN-Signal', 1, 'dbm', 66, 1, false],
     ];
 
-    public function Create()
+    public function Create(): void
     {
         parent::Create();
 
@@ -84,7 +84,7 @@ class ZendureSolarFlowHub extends IPSModule
         // Gateway: "Zendure Cloud" (Cloud-Betrieb) oder direkt ein MQTT Server/Client (lokaler Betrieb)
     }
 
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         parent::ApplyChanges();
 
@@ -102,19 +102,35 @@ class ZendureSolarFlowHub extends IPSModule
         }
         $this->WriteAttributeString('WatchedVariables', json_encode($watched));
 
-        $this->RegisterProfiles();
+        // Darstellungen (ab Symcon 8) – auch bei bestehenden Variablen aktualisieren
+        foreach (self::PROPERTIES as $ident => [$name, $type, $pres, $position, $divisor, $writable]) {
+            if ($this->VariableExists($ident)) {
+                $this->MaintainVariable($ident, $name, $type, $this->Presentation($pres), $position, true);
+            }
+        }
+        foreach (['Pack1_', 'Pack2_', 'Pack3_', 'Pack4_', 'Pack5_', 'Pack6_'] as $n => $prefix) {
+            $label = 'Akku ' . ($n + 1) . ' ';
+            $pos = 100 + ($n + 1) * 10;
+            foreach ([['SoC', 'Ladezustand', 1, 'soc', 0], ['Temp', 'Temperatur', 2, 'temp', 1], ['Volt', 'Spannung', 2, 'volt', 2],
+                      ['Current', 'Strom', 2, 'ampere', 3], ['Power', 'Leistung', 1, 'battery', 4]] as [$suffix, $name, $type, $pres, $off]) {
+                if ($this->VariableExists($prefix . $suffix)) {
+                    $this->MaintainVariable($prefix . $suffix, $label . $name, $type, $this->Presentation($pres), $pos + $off, true);
+                }
+            }
+        }
+        $this->RemoveOldProfiles();
 
         $image = $this->ReadPropertyInteger('TileImage');
         if ($image > 0 && @IPS_MediaExists($image)) {
             $this->RegisterReference($image);
         }
 
-        $this->RegisterVariableBoolean('Online', 'Online', '~Alert.Reversed', 0);
-        $this->RegisterVariableInteger('LastUpdate', 'Letzte Meldung', '~UnixTimestamp', 1);
-        $this->RegisterVariableInteger('BatteryPower', 'Akkuleistung (+ Laden / − Entladen)', 'ZEND.Watt', 33);
-        $this->RegisterVariableFloat('SolarEnergyToday', 'Solarertrag Hub heute', '~Electricity', 23);
-        $this->RegisterVariableFloat('BatteryTemperature', 'Akkutemperatur', '~Temperature', 44);
-        $this->RegisterVariableInteger('DischargePower', 'Entladeleistung vorgeben', 'ZEND.OutputLimit', 49);
+        $this->RegisterVariableBoolean('Online', 'Online', $this->Presentation('online'), 0);
+        $this->RegisterVariableInteger('LastUpdate', 'Letzte Meldung', $this->Presentation('datetime'), 1);
+        $this->RegisterVariableInteger('BatteryPower', 'Akkuleistung (+ Laden / − Entladen)', $this->Presentation('battery'), 33);
+        $this->RegisterVariableFloat('SolarEnergyToday', 'Solarertrag Hub heute', $this->Presentation('kwh'), 23);
+        $this->RegisterVariableFloat('BatteryTemperature', 'Akkutemperatur', $this->Presentation('temp'), 44);
+        $this->RegisterVariableInteger('DischargePower', 'Entladeleistung vorgeben', $this->Presentation('limit'), 49);
         $this->EnableAction('DischargePower');
 
         if (IPS_GetKernelRunlevel() === KR_READY) {
@@ -226,7 +242,7 @@ class ZendureSolarFlowHub extends IPSModule
         return $this->WriteProperties([$Name => $Value]);
     }
 
-    public function RequestAction($Ident, $Value)
+    public function RequestAction(string $Ident, mixed $Value): void
     {
         switch ($Ident) {
             case 'outputLimit':
@@ -262,7 +278,7 @@ class ZendureSolarFlowHub extends IPSModule
     // Datenfluss
     // ---------------------------------------------------------------------
 
-    public function ReceiveData($JSONString)
+    public function ReceiveData(string $JSONString): string
     {
         $data = json_decode($JSONString, true);
         $topic = (string) ($data['Topic'] ?? '');
@@ -315,8 +331,8 @@ class ZendureSolarFlowHub extends IPSModule
                 if (!isset(self::PROPERTIES[$key]) || !is_numeric($value)) {
                     continue;
                 }
-                [$name, $type, $profile, $position, $divisor, $writable] = self::PROPERTIES[$key];
-                $this->EnsureVariable($key, $name, $type, $profile, $position, $writable);
+                [$name, $type, $pres, $position, $divisor, $writable] = self::PROPERTIES[$key];
+                $this->EnsureVariable($key, $name, $type, $pres, $position, $writable);
 
                 switch ($type) {
                     case 0:
@@ -376,15 +392,15 @@ class ZendureSolarFlowHub extends IPSModule
             $pos = 100 + $n * 10;
 
             if (isset($pack['socLevel'])) {
-                $this->EnsureVariable($prefix . 'SoC', $label . 'Ladezustand', 1, 'ZEND.SoC', $pos, false);
+                $this->EnsureVariable($prefix . 'SoC', $label . 'Ladezustand', 1, 'soc', $pos, false);
                 $this->SetValue($prefix . 'SoC', (int) $pack['socLevel']);
             }
             if (isset($pack['maxTemp'])) {
-                $this->EnsureVariable($prefix . 'Temp', $label . 'Temperatur', 2, '~Temperature', $pos + 1, false);
+                $this->EnsureVariable($prefix . 'Temp', $label . 'Temperatur', 2, 'temp', $pos + 1, false);
                 $this->SetValue($prefix . 'Temp', round(((float) $pack['maxTemp'] - 2731) / 10, 1));
             }
             if (isset($pack['totalVol'])) {
-                $this->EnsureVariable($prefix . 'Volt', $label . 'Spannung', 2, '~Volt', $pos + 2, false);
+                $this->EnsureVariable($prefix . 'Volt', $label . 'Spannung', 2, 'volt', $pos + 2, false);
                 $this->SetValue($prefix . 'Volt', round((float) $pack['totalVol'] / 100, 2));
             }
             if (isset($pack['batcur'])) {
@@ -392,11 +408,11 @@ class ZendureSolarFlowHub extends IPSModule
                 if ($cur >= 32768) {
                     $cur -= 65536;
                 }
-                $this->EnsureVariable($prefix . 'Current', $label . 'Strom', 2, '~Ampere', $pos + 3, false);
+                $this->EnsureVariable($prefix . 'Current', $label . 'Strom', 2, 'ampere', $pos + 3, false);
                 $this->SetValue($prefix . 'Current', round($cur / 10, 1));
             }
             if (isset($pack['power'])) {
-                $this->EnsureVariable($prefix . 'Power', $label . 'Leistung', 1, 'ZEND.Watt', $pos + 4, false);
+                $this->EnsureVariable($prefix . 'Power', $label . 'Leistung', 1, 'battery', $pos + 4, false);
                 $this->SetValue($prefix . 'Power', (int) $pack['power']);
             }
         }
@@ -440,14 +456,14 @@ class ZendureSolarFlowHub extends IPSModule
     // Kachel
     // ---------------------------------------------------------------------
 
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         if ($Message === VM_UPDATE) {
             $this->UpdateTile();
         }
     }
 
-    public function GetVisualizationTile()
+    public function GetVisualizationTile(): string
     {
         $state = $this->BuildTileState();
         $state['background'] = $this->TileBackground();
@@ -641,8 +657,35 @@ class ZendureSolarFlowHub extends IPSModule
             'energyHub'       => round((float) ($num('SolarEnergyToday') ?? 0), 2),
             'energyPlant'     => $this->ReadLinkedEnergy('InverterEnergyTodayVariable'),
             'temp'            => $num('BatteryTemperature'),
+            'objects'         => $this->TileObjects(),
             'sunrise'         => $this->LocationTime('Sunrise'),
             'sunset'          => $this->LocationTime('Sunset'),
+        ];
+    }
+
+    /** Objekte, die beim Antippen in der Kachel geöffnet werden (openObject, ab Symcon 9.0). */
+    private function TileObjects(): array
+    {
+        $id = function (string $ident): int {
+            $vid = @IPS_GetObjectIDByIdent($ident, $this->InstanceID);
+            return ($vid !== false && $vid > 0) ? (int) $vid : 0;
+        };
+        $prop = function (string $name): int {
+            $vid = $this->ReadPropertyInteger($name);
+            return ($vid > 0 && IPS_ObjectExists($vid)) ? $vid : 0;
+        };
+        $inverter = $prop('InverterPowerVariable');
+        return [
+            'hub'    => $this->InstanceID,
+            'pv'     => $id('solarInputPower'),
+            'bat'    => $id('BatteryPower'),
+            'soc'    => $id('electricLevel'),
+            'time'   => $id('remainOutTime') ?: $id('remainInputTime'),
+            'home'   => $inverter ?: $id('outputHomePower'),
+            'inv'    => $inverter > 0 ? (int) IPS_GetParent($inverter) : 0,
+            'direct' => $prop('DirectPVVariable') ?: ($inverter > 0 ? (int) IPS_GetParent($inverter) : 0),
+            'energy' => $prop('InverterEnergyTodayVariable') ?: $id('SolarEnergyToday'),
+            'temp'   => $id('BatteryTemperature'),
         ];
     }
 
@@ -785,12 +828,12 @@ class ZendureSolarFlowHub extends IPSModule
         return $key;
     }
 
-    private function EnsureVariable(string $ident, string $name, int $type, string $profile, int $position, bool $writable): void
+    private function EnsureVariable(string $ident, string $name, int $type, string $pres, int $position, bool $writable): void
     {
         if ($this->VariableExists($ident)) {
             return;
         }
-        $this->MaintainVariable($ident, $name, $type, $profile, $position, true);
+        $this->MaintainVariable($ident, $name, $type, $this->Presentation($pres), $position, true);
         if ($writable) {
             $this->EnableAction($ident);
         }
@@ -808,45 +851,82 @@ class ZendureSolarFlowHub extends IPSModule
         return $id !== false && $id > 0;
     }
 
-    private function RegisterProfiles(): void
+    /** Entfernt die Variablenprofile früherer Versionen (ZEND.*), sobald keine Variable sie mehr nutzt. */
+    private function RemoveOldProfiles(): void
     {
-        $max = max(100, $this->ReadPropertyInteger('MaxOutputPower'));
-
-        $this->CreateIntegerProfile('ZEND.Watt', 'Electricity', '', ' W', 0, 0, 0);
-        $this->CreateIntegerProfile('ZEND.OutputLimit', 'Electricity', '', ' W', 0, $max, 10);
-        $this->CreateIntegerProfile('ZEND.SoC', 'Battery', '', ' %', 0, 100, 1);
-        $this->CreateIntegerProfile('ZEND.SocMax', 'Battery', '', ' %', 70, 100, 5);
-        $this->CreateIntegerProfile('ZEND.SocMin', 'Battery', '', ' %', 0, 50, 5);
-        $this->CreateIntegerProfile('ZEND.Minutes', 'Clock', '', ' min', 0, 0, 0);
-        $this->CreateIntegerProfile('ZEND.dBm', 'Intensity', '', ' dBm', -100, 0, 0);
-
-        $this->CreateIntegerProfile('ZEND.PackState', 'Battery', '', '', 0, 3, 0, [
-            [0, 'Ruhezustand', '', -1],
-            [1, 'Laden', '', 0x00AA00],
-            [2, 'Entladen', '', 0xFF8800],
-            [3, 'USV', '', -1],
-        ]);
-        $this->CreateIntegerProfile('ZEND.PassMode', 'Shuffle', '', '', 0, 2, 0, [
-            [0, 'Automatisch', '', -1],
-            [1, 'Immer aus', '', -1],
-            [2, 'Immer an', '', -1],
-        ]);
-        $this->CreateIntegerProfile('ZEND.HubState', 'Power', '', '', 0, 1, 0, [
-            [0, 'Ausgabe stoppen, Standby', '', -1],
-            [1, 'Ausgabe stoppen, ausschalten', '', -1],
-        ]);
+        $old = ['ZEND.Watt', 'ZEND.OutputLimit', 'ZEND.SoC', 'ZEND.SocMax', 'ZEND.SocMin', 'ZEND.Minutes', 'ZEND.dBm',
+                'ZEND.PackState', 'ZEND.PassMode', 'ZEND.HubState'];
+        $existing = array_values(array_filter($old, 'IPS_VariableProfileExists'));
+        if (count($existing) === 0) {
+            return;
+        }
+        $used = [];
+        foreach (IPS_GetVariableList() as $vid) {
+            $v = IPS_GetVariable($vid);
+            $used[$v['VariableProfile']] = true;
+            $used[$v['VariableCustomProfile']] = true;
+        }
+        foreach ($existing as $profile) {
+            if (!isset($used[$profile])) {
+                IPS_DeleteVariableProfile($profile);
+            }
+        }
     }
 
-    private function CreateIntegerProfile(string $name, string $icon, string $prefix, string $suffix, int $min, int $max, int $step, array $associations = []): void
+    /**
+     * Darstellungen der Variablen (Symcon 8/9) statt eigener Variablenprofile.
+     */
+    private function Presentation(string $key): array
     {
-        if (!IPS_VariableProfileExists($name)) {
-            IPS_CreateVariableProfile($name, 1);
+        $value = static function (string $suffix, string $icon, int $digits = 0): array {
+            return ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION, 'SUFFIX' => $suffix, 'DIGITS' => $digits, 'ICON' => $icon];
+        };
+        $slider = static function (int $min, int $max, int $step, string $suffix, string $icon): array {
+            return ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER, 'MIN' => $min, 'MAX' => $max, 'STEP_SIZE' => $step, 'SUFFIX' => $suffix, 'ICON' => $icon];
+        };
+        $enum = static function (array $options, string $icon): array {
+            $list = [];
+            foreach ($options as $v => [$text, $optIcon, $color]) {
+                $list[] = ['Value' => $v, 'Caption' => $text, 'IconActive' => $optIcon !== '', 'IconValue' => $optIcon,
+                    'ColorActive' => $color >= 0, 'Color' => $color];
+            }
+            return ['PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION, 'ICON' => $icon, 'OPTIONS' => json_encode($list)];
+        };
+        $show = ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION];
+        $max = max(100, $this->ReadPropertyInteger('MaxOutputPower'));
+
+        switch ($key) {
+            case 'soc':       return $value(' %', 'battery-half');
+            case 'solar':     return $value(' W', 'solar-panel');
+            case 'home':      return $value(' W', 'house');
+            case 'charge':    return $value(' W', 'arrow-down');
+            case 'discharge': return $value(' W', 'arrow-up');
+            case 'battery':   return $value(' W', 'battery-full');
+            case 'watt':      return $value(' W', 'bolt');
+            case 'minutes':   return $value(' min', 'clock');
+            case 'count':     return $value('', 'layer-group');
+            case 'dbm':       return $value(' dBm', 'wifi');
+            case 'kwh':       return $value(' kWh', 'solar-panel', 2);
+            case 'temp':      return $value(' °C', 'temperature-half', 1);
+            case 'volt':      return $value(' V', 'car-battery', 2);
+            case 'ampere':    return $value(' A', 'wave-square', 1);
+            case 'limit':     return $slider(0, $max, 10, ' W', 'gauge');
+            case 'socMax':    return $slider(70, 100, 5, ' %', 'battery-full');
+            case 'socMin':    return $slider(0, 50, 5, ' %', 'battery-quarter');
+            case 'switch':    return ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH, 'ICON' => 'toggle-on'];
+            case 'passMode':  return $enum([0 => ['Automatisch', 'wand-magic-sparkles', -1], 1 => ['Immer aus', 'circle-xmark', -1], 2 => ['Immer an', 'circle-check', -1]], 'shuffle');
+            case 'packState': return $enum([0 => ['Ruhezustand', 'pause', -1], 1 => ['Laden', 'arrow-down', 0x2FBF71], 2 => ['Entladen', 'arrow-up', 0xF5A623], 3 => ['USV', 'plug', -1]], 'battery-half');
+            case 'hubState':  return $enum([0 => ['Ausgabe stoppen, Standby', 'moon', -1], 1 => ['Ausgabe stoppen, ausschalten', 'power-off', -1]], 'power-off');
+            case 'online':    return $show + ['ICON' => 'signal'];
+            case 'bypass':    return $show + ['ICON' => 'shuffle'];
+            case 'power':     return $show + ['ICON' => 'power-off'];
+            case 'heat':      return $show + ['ICON' => 'fire'];
+            case 'wifiOn':    return $show + ['ICON' => 'wifi'];
+            case 'datetime':
+                return defined('VARIABLE_PRESENTATION_DATE_TIME')
+                    ? ['PRESENTATION' => VARIABLE_PRESENTATION_DATE_TIME, 'ICON' => 'clock']
+                    : $show + ['ICON' => 'clock'];
         }
-        IPS_SetVariableProfileIcon($name, $icon);
-        IPS_SetVariableProfileText($name, $prefix, $suffix);
-        IPS_SetVariableProfileValues($name, $min, $max, $step);
-        foreach ($associations as [$value, $text, $aIcon, $color]) {
-            IPS_SetVariableProfileAssociation($name, $value, $text, $aIcon, $color);
-        }
+        return $show;
     }
 }

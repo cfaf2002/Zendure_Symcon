@@ -4,9 +4,9 @@
     "name": "Zendure",
     "url": "https://github.com/cfaf2002/Zendure_Symcon",
     "compatibility": {
-        "version": "7.0"
+        "version": "8.1"
     },
-    "version": "1.7",
-    "build": 8,
-    "date": 1790949600
+    "version": "2.0",
+    "build": 9,
+    "date": 1790978400
 }

@@ -12,7 +12,7 @@ declare(strict_types=1);
  *
  * Autor: Armin Frohwerk
  */
-class ZendureCloud extends IPSModule
+class ZendureCloud extends IPSModuleStrict
 {
     private const MQTT_TX = '{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}';
     private const MQTT_RX = '{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}';
@@ -22,7 +22,7 @@ class ZendureCloud extends IPSModule
     private const SIGN_KEY = 'C*dafwArEOXK';
     private const CLIENT_ID = 'zenHa';
 
-    public function Create()
+    public function Create(): void
     {
         parent::Create();
 
@@ -36,7 +36,7 @@ class ZendureCloud extends IPSModule
         $this->RegisterTimer('Refresh', 0, 'ZENDC_RefreshDevices($_IPS[\'TARGET\']);');
     }
 
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         parent::ApplyChanges();
 
@@ -57,7 +57,7 @@ class ZendureCloud extends IPSModule
         $this->RefreshDevices();
     }
 
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         if ($Message === IPS_KERNELSTARTED) {
             $this->UnregisterMessage(0, IPS_KERNELSTARTED);
@@ -224,7 +224,7 @@ class ZendureCloud extends IPSModule
     // Datenfluss
     // ---------------------------------------------------------------------
 
-    public function ForwardData($JSONString)
+    public function ForwardData(string $JSONString): string
     {
         $data = json_decode($JSONString, true);
         if (($data['DataID'] ?? '') === self::CONFIG_TX) {
@@ -246,13 +246,13 @@ class ZendureCloud extends IPSModule
         return (string) $this->SendDataToParent($JSONString);
     }
 
-    public function ReceiveData($JSONString)
+    public function ReceiveData(string $JSONString): string
     {
         $this->SendDataToChildren($JSONString);
         return '';
     }
 
-    public function GetConfigurationForm()
+    public function GetConfigurationForm(): string
     {
         $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
         $devices = json_decode($this->ReadAttributeString('DeviceList'), true) ?: [];
@@ -265,7 +265,7 @@ class ZendureCloud extends IPSModule
         $status[] = 'MQTT-Client: ' . ($parentID > 0 ? IPS_GetName($parentID) . ' (#' . $parentID . ')' : 'nicht verbunden');
 
         array_unshift($form['actions'], ['type' => 'Label', 'caption' => implode("\n", $status)]);
-        return json_encode($form);
+        return (string) json_encode($form);
     }
 
     // ---------------------------------------------------------------------

@@ -9,26 +9,26 @@ declare(strict_types=1);
  *
  * Autor: Armin Frohwerk
  */
-class ZendureConfigurator extends IPSModule
+class ZendureConfigurator extends IPSModuleStrict
 {
     private const CONFIG_TX = '{E66E03E9-BA01-44EA-B561-88D3C300C517}';
     private const CLOUD_GUID = '{AEE5084B-5CC2-4B5B-8BD2-62308EB3845B}';
     private const DEVICE_GUID = '{EEA9BD1E-4878-4A2D-9165-F23C8A4BA200}';
 
-    public function Create()
+    public function Create(): void
     {
         parent::Create();
         $this->ConnectParent(self::CLOUD_GUID);
     }
 
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         parent::ApplyChanges();
         // MQTT-Daten werden im Konfigurator nicht benötigt
         $this->SetReceiveDataFilter('ZENDURE_CONFIGURATOR_IGNORE');
     }
 
-    public function ReceiveData($JSONString)
+    public function ReceiveData(string $JSONString): string
     {
         return '';
     }
@@ -39,7 +39,7 @@ class ZendureConfigurator extends IPSModule
         $this->ReloadForm();
     }
 
-    public function GetConfigurationForm()
+    public function GetConfigurationForm(): string
     {
         $devices = $this->Request('GetDevices');
 
@@ -88,7 +88,7 @@ class ZendureConfigurator extends IPSModule
 
         $hint = $this->CloudStatusText();
 
-        return json_encode([
+        return (string) json_encode([
             'elements' => [],
             'actions'  => [
                 ['type' => 'Label', 'caption' => $hint],

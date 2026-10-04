@@ -1,20 +1,30 @@
 # Zendure für IP-Symcon
 
+[![Version](https://img.shields.io/badge/Version-2.0-blue)](library.json)
+[![IP-Symcon](https://img.shields.io/badge/IP--Symcon-ab%208.1-0A7BBB)](https://www.symcon.de)
+[![Symcon 9.0](https://img.shields.io/badge/optimiert%20f%C3%BCr-Symcon%209.0-0A7BBB)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
+[![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net)
+[![Zendure](https://img.shields.io/badge/Zendure-SolarFlow%20Hub%201200%20%7C%202000-2FBF71)](https://zendure.de)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green)](LICENSE)
+[![Letzter Commit](https://img.shields.io/github/last-commit/cfaf2002/Zendure_Symcon)](https://github.com/cfaf2002/Zendure_Symcon/commits)
+
 Modul zum Auslesen und Steuern von **Zendure SolarFlow Hub 1200 / Hub 2000** in IP-Symcon – wahlweise über die **Zendure-Cloud** oder einen **lokalen MQTT-Broker**.
 
 Autor: Armin Frohwerk
+
+> **Hinweis:** Das Modul ist kein offizielles Produkt von Zendure und steht in keiner Verbindung zu Zendure. Es nutzt dieselbe Schnittstelle wie die Zendure-Integration für Home Assistant. Ändert Zendure die Schnittstelle, kann das Modul ohne Vorwarnung aufhören zu funktionieren.
 
 ## Inhalt
 
 | Modul | Typ | Präfix | Aufgabe |
 |---|---|---|---|
 | Zendure Cloud | Splitter | `ZENDC` | Holt mit dem Cloud-Key Geräteliste und MQTT-Zugangsdaten, richtet den MQTT-Client ein |
-| Zendure Konfigurator | Konfigurator | `ZENDK` | Listet die Geräte des Kontos und legt Geräteinstanzen an |
+| Zendure Configurator | Konfigurator | `ZENDK` | Listet die Geräte des Kontos und legt Geräteinstanzen an |
 | Zendure SolarFlow Hub | Gerät | `ZEND` | Werte, Akkus, Steuerung |
 
 ## Voraussetzungen
 
-- IP-Symcon ab 7.0
+- IP-Symcon ab 8.1 (empfohlen 9.0 – dann öffnet ein Antippen in der Kachel die passende Variable)
 - Zendure-App mit eingerichtetem Hub
 - Cloud-Betrieb: Cloud-Key aus der Zendure-App (der Token, den Zendure für die Home-Assistant-Integration ausgibt)
 - Lokaler Betrieb: MQTT Server in Symcon und ein Hub, der per Bluetooth auf diesen Broker umgestellt wurde
@@ -24,7 +34,7 @@ Autor: Armin Frohwerk
 1. Instanz **Zendure Cloud** anlegen, Cloud-Key einfügen, übernehmen.
 2. Button **MQTT-Verbindung einrichten**: legt bei Bedarf einen *MQTT Client* mit *Client Socket* an und trägt Server, Benutzer, Passwort, Client-ID und die Abonnements ein.
    Falls etwas nicht automatisch gesetzt werden kann, zeigt **Zugangsdaten anzeigen** alle Werte zum manuellen Eintragen.
-3. Instanz **Zendure Konfigurator** anlegen (hängt sich an *Zendure Cloud*) und den Hub erstellen.
+3. Instanz **Zendure Configurator** anlegen (hängt sich an *Zendure Cloud*) und den Hub erstellen.
 
 ## Einrichtung – lokal (ohne Cloud)
 
@@ -52,7 +62,7 @@ Variablen werden angelegt, sobald der Hub den jeweiligen Wert meldet, u. a.:
 
 ## Kachel
 
-Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (ab Symcon 7):
+Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (HTML-SDK):
 
 - Energiefluss von links nach rechts: Solar und Akku → Hub → Haus, mit fließenden Lichtpunkten (schneller bei mehr Leistung) und Ladezustandsring am Akku
 - Info-Spalte mit Status (lädt / entlädt / Ruhezustand / offline), Ladezustand, Restzeit bzw. „Voll in“, Ertrag heute und Akkutemperatur
@@ -82,6 +92,13 @@ Große Bilder werden automatisch verkleinert, damit die Kachel nicht zu groß wi
 
 Für die direkt angeschlossenen Module können bis zu zwei Eingänge gewählt werden (z. B. „PV 1 Leistung“ und „PV 3 Leistung“, wenn der Hub an PV 2 und PV 4 hängt). Sie werden addiert, und die Kachel zeigt dann auch den Wirkungsgrad. Ohne diese Variablen wird der Wert aus AC-Leistung und Hub-Ausgang geschätzt. Werte in kW bzw. Wh werden automatisch umgerechnet.
 
+## Symcon 8/9
+
+- Alle Module nutzen `IPSModuleStrict` mit typisierten Funktionen.
+- Die Variablen verwenden **Darstellungen** statt eigener Variablenprofile: Werte mit Einheit und Icon, Schieberegler für Ausgangsleistung, Ladegrenze, Entladegrenze und Entladeleistung, Aufzählung für den Bypass-Modus, Schalter für Signalton und Bypass-Rücksetzung. Die Profile früherer Versionen (`ZEND.*`) werden beim Update automatisch auf Darstellungen umgestellt und gelöscht, sobald sie nicht mehr gebraucht werden.
+- **Kachelschema:** Mit Hintergrund „Keiner“ übernimmt die Kachel die Farben des gewählten Visualisierungs-Themes (`--content-color`, `--card-color`, `--accent-color`) und passt damit zu hellem und dunklem Design. Die Hintergründe Aurora, Szene und eigenes Bild bleiben bewusst dunkel.
+- **openObject (ab 9.0):** Ein Antippen von Solar, Akku, Haus oder einer Info-Karte öffnet die zugehörige Variable; der Wechselrichter öffnet die Hoymiles-Instanz. Unter 9.0 ist die Kachel wie bisher nur Anzeige.
+
 ## PHP-Befehle
 
 ```php
@@ -106,3 +123,9 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 - Die Cloud-Anbindung nutzt dieselbe Schnittstelle wie die offizielle Zendure-Integration für Home Assistant. Zendure kann diese jederzeit ändern.
 - Ob der Hub `outputLimit` direkt übernimmt, hängt vom eingestellten Modus in der App ab. Greift das Limit nicht, `ZEND_SetDischargePower` verwenden.
 - Häufiges Schreiben (z. B. sekündliche Nulleinspeisungs-Regelung) möglichst vermeiden.
+
+## Lizenz
+
+[MIT](LICENSE) – © 2026 Armin Frohwerk.
+
+Cloud-Anmeldung (Signatur des Abrufs) und MQTT-Protokoll orientieren sich an der Zendure-Integration für Home Assistant ([Zendure/Zendure-HA](https://github.com/Zendure/Zendure-HA), MIT-Lizenz, © 2024 peteS-UK). Zendure und SolarFlow sind Marken ihrer jeweiligen Inhaber.
