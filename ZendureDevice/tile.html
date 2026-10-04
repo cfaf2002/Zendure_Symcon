@@ -62,6 +62,35 @@
         background-image: radial-gradient(rgba(255,255,255,.12) 1px, transparent 1.2px); background-size: 18px 18px;
         -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%, #000 70%, transparent 100%);
         mask-image: linear-gradient(180deg, transparent 0%, #000 45%, #000 70%, transparent 100%); }
+    /* Solarmodule in 3D-Perspektive am unteren Rand, Sonnenreflex wandert mit dem Sonnenstand */
+    .panels { position: absolute; left: -6%; right: -6%; bottom: -2%; height: 36%;
+        perspective: 900px; perspective-origin: 50% -60%; opacity: .66; transition: opacity 1.5s;
+        -webkit-mask-image: linear-gradient(to top, #000 30%, rgba(0,0,0,.55) 65%, transparent 100%);
+        mask-image: linear-gradient(to top, #000 30%, rgba(0,0,0,.55) 65%, transparent 100%);
+        --sx: 50%; --glare: .35; }
+    #bgAurora.night .panels { opacity: .45; }
+    .rack { position: absolute; inset: 0; transform: rotateX(56deg); transform-origin: 50% 100%;
+        display: flex; flex-direction: column; justify-content: flex-end; gap: 7%; padding: 0 2%; }
+    .row { display: grid; grid-template-columns: repeat(10, 1fr); gap: .5vmin; height: 40%;
+        filter: drop-shadow(0 1.2vmin 1vmin rgba(0, 0, 0, .55)); }
+    .pv { position: relative; border-radius: 2px; overflow: hidden;
+        background:
+            linear-gradient(135deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, 0) 38%),
+            repeating-linear-gradient(90deg, rgba(160, 190, 255, .22) 0 1px, transparent 1px 16.666%),
+            repeating-linear-gradient(0deg, rgba(160, 190, 255, .22) 0 1px, transparent 1px 10%),
+            linear-gradient(170deg, #2a4384 0%, #172a5c 50%, #0c1736 100%);
+        border: 1.5px solid; border-color: #c9d3e2 #7d8798 #5a6373 #aab4c4; }
+    .pv::before { content: ""; position: absolute; inset: 0;
+        background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .22) 48%, transparent 60%);
+        transform: translateX(-130%); animation: sweep 10s ease-in-out infinite; animation-delay: var(--d, 0s); }
+    @keyframes sweep { 0%, 65% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+    .glare { position: absolute; inset: 0; pointer-events: none; transform: rotateX(56deg); transform-origin: 50% 100%; mix-blend-mode: screen;
+        background:
+            radial-gradient(16% 40% at var(--sx) 18%, rgba(255, 246, 220, var(--glare)) 0%, transparent 70%),
+            radial-gradient(42% 85% at var(--sx) 25%, rgba(255, 190, 90, calc(var(--glare) * .55)) 0%, transparent 72%); }
+    #bgAurora.night .glare { background: radial-gradient(26% 60% at var(--sx) 20%, rgba(170, 185, 255, .22) 0%, transparent 70%); }
+    #bgAurora.night .pv::before { animation: none; opacity: 0; }
+
     /* Sonne / Mond am echten Himmelsbogen */
     .arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
     .arc path { fill: none; stroke: rgba(255, 220, 150, .22); stroke-width: 1.2; stroke-dasharray: 2 5; vector-effect: non-scaling-stroke; }
@@ -85,7 +114,7 @@
     #bgAurora:not(.night) #stars, #bgAurora:not(.night) .moon, #bgAurora.night .sun { opacity: 0; }
     .noise { position: absolute; inset: 0; opacity: .06; mix-blend-mode: overlay;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"); }
-    @media (prefers-reduced-motion: reduce) { .blob, .sun::after, #stars i { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .blob, .sun::after, #stars i, .pv::before { animation: none; } }
 
     /* Platz für Titel und Vergrößern-Symbol, die Symcon über die Kachel legt */
     .app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column;
@@ -155,6 +184,7 @@
     <div id="stars"></div>
     <div id="sun" class="sun"><div class="core"></div></div>
     <div id="moon" class="moon"></div>
+    <div class="panels" id="panels"><div class="rack" id="rack"></div><div class="glare"></div></div>
     <div class="noise"></div>
 </div>
 <div id="bgScene" class="hidden"></div>
@@ -278,6 +308,13 @@
             html += '<i style="left:' + ((k * 37.3) % 100).toFixed(1) + '%;top:' + ((k * 23.9) % 62).toFixed(1) + '%;animation-delay:' + (k % 7) * .6 + 's;opacity:' + (.25 + (k % 4) * .15) + '"></i>';
         }
         st.innerHTML = html;
+        var rack = document.getElementById('rack'), pv = '';
+        for (var r = 0; r < 2; r++) {
+            pv += '<div class="row">';
+            for (var j = 0; j < 10; j++) pv += '<div class="pv" style="--d:' + (j * .14 + r * .5).toFixed(2) + 's"></div>';
+            pv += '</div>';
+        }
+        rack.innerHTML = pv;
     }
     function sunTimes() {
         var now = new Date(), rise, set;
@@ -298,12 +335,18 @@
         if (day) {
             var p = arcPoint((t.now - t.rise) / (t.set - t.rise));
             sun.style.left = p.x + '%'; sun.style.top = p.y + '%';
-            sun.style.opacity = String(.35 + .65 * Math.min(1, Math.sqrt(Math.max(0, sky.pv) / 1200)));
+            var strength = Math.min(1, Math.sqrt(Math.max(0, sky.pv) / 1200));
+            sun.style.opacity = String(.35 + .65 * strength);
+            var panels = document.getElementById('panels');
+            // Panel-Container ist 112 % breit und um 6 % nach links versetzt
+            panels.style.setProperty('--sx', ((p.x + 6) / 112 * 100).toFixed(1) + '%');
+            panels.style.setProperty('--glare', (.25 + .6 * strength).toFixed(2));
         } else {
             var nightLen = 86400000 - (t.set - t.rise);
             var since = t.now > t.set ? t.now - t.set : t.now + 86400000 - t.set;
             var q = arcPoint(Math.min(1, since / nightLen));
             moon.style.left = q.x + '%'; moon.style.top = q.y + '%';
+            document.getElementById('panels').style.setProperty('--sx', ((q.x + 6) / 112 * 100).toFixed(1) + '%');
         }
         return day;
     }

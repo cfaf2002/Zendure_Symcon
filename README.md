@@ -1,6 +1,6 @@
 # Zendure für IP-Symcon
 
-[![Version](https://img.shields.io/badge/Version-2.0-blue)](library.json)
+[![Version](https://img.shields.io/badge/Version-2.1-blue)](library.json)
 [![IP-Symcon](https://img.shields.io/badge/IP--Symcon-ab%208.1-0A7BBB)](https://www.symcon.de)
 [![Symcon 9.0](https://img.shields.io/badge/optimiert%20f%C3%BCr-Symcon%209.0-0A7BBB)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
 [![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net)
@@ -73,7 +73,7 @@ Die Hub-Instanz bringt eine eigene Kachel für die Kachel-Visualisierung mit (HT
 
 | Einstellung | Wirkung |
 |---|---|
-| Aurora (Standard) | moderner, dunkler Hintergrund mit weich wandernden Farbwolken und Punkteraster. Die Sonne wandert über einen feinen Tagesbogen am echten Sonnenstand (Sonnenauf- und -untergang aus der Standort-Instanz von Symcon, sonst 7–19 Uhr) und strahlt umso kräftiger, je mehr Solarleistung anliegt. Nachts zieht eine Mondsichel ihren Bogen, dazu funkeln Sterne. Die Farbwolken leuchten je nach Energiefluss: gelb bei Solarleistung, türkis beim Laden/Entladen, blau bei der Einspeisung ins Haus. |
+| Aurora (Standard) | moderner, dunkler Hintergrund mit weich wandernden Farbwolken und Punkteraster. Die Sonne wandert über einen feinen Tagesbogen am echten Sonnenstand (Sonnenauf- und -untergang aus der Standort-Instanz von Symcon, sonst 7–19 Uhr) und strahlt umso kräftiger, je mehr Solarleistung anliegt. Am unteren Rand liegen Solarmodule in 3D-Perspektive; die Sonne spiegelt sich darin, der Reflex wandert mit dem Sonnenstand und glänzt umso stärker, je mehr Leistung anliegt. Nachts zieht eine Mondsichel ihren Bogen, dazu funkeln Sterne und die Module liegen im Mondlicht. Die Farbwolken leuchten je nach Energiefluss: gelb bei Solarleistung, türkis beim Laden/Entladen, blau bei der Einspeisung ins Haus. |
 | Szene | eingebaute Illustration mit Haus, Solarmodulen und Speicher – tagsüber hell mit Sonne, nachts dunkel mit Mond und Sternen |
 | Eigenes Bild | ein Medienobjekt (Bild) über die ganze Kachel, abgeblendet; Sichtbarkeit einstellbar (empfohlen 20–40 %) |
 | Keiner | nur der Hintergrund der Visualisierung |
