@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 2.2 (Build 11)](https://img.shields.io/badge/Modul--Version-2.2_(Build_11)-informational.svg)](library.json)
+[![Modul-Version 2.3 (Build 12)](https://img.shields.io/badge/Modul--Version-2.3_(Build_12)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -38,7 +38,7 @@ Autor: Armin Frohwerk
 
 1. Instanz **Zendure Cloud** anlegen, Cloud-Key einfügen, übernehmen.
 2. Button **MQTT-Verbindung einrichten**: legt bei Bedarf einen *MQTT Client* mit *Client Socket* an und trägt Server, Benutzer, Passwort, Client-ID und die Abonnements ein.
-   Falls etwas nicht automatisch gesetzt werden kann, zeigt **Zugangsdaten anzeigen** alle Werte zum manuellen Eintragen.
+   Falls etwas nicht automatisch gesetzt werden kann, zeigt **Zugangsdaten anzeigen** Server, Port, Client-ID, Benutzer und Abonnements zum manuellen Eintragen. Das Passwort wird aus Sicherheitsgründen nicht angezeigt; es trägt „MQTT-Verbindung einrichten“ selbst ein.
 3. Instanz **Zendure Configurator** anlegen (hängt sich an *Zendure Cloud*) und den Hub erstellen.
 
 ## Einrichtung – lokal (ohne Cloud)
@@ -133,6 +133,7 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 
 | Version | Build | Datum | Beschreibung |
 |---|---|---|---|
+| 2.3 | 12 | 06.10.2026 | Sicherheit: MQTT-Passwort wird bei „Zugangsdaten anzeigen“ nicht mehr im Klartext gezeigt; Cloud-Abruf nur noch über HTTPS mit ausdrücklicher Zertifikatsprüfung; interne Bildfunktion nicht mehr als Befehl `ZEND_scaleImage` sichtbar. Geschwindigkeit: Variablen werden nur noch bei geänderten Werten geschrieben; Animationen der Kachel pausieren, solange sie nicht sichtbar ist. Kachelwerte werden ohne `innerHTML` gesetzt |
 | 2.2 | 11 | 06.10.2026 | Einheitliches Design nach `STYLEGUIDE.md`: Kachel-Grundlage (Farben, Schrift, Radien, Zustandsfarben) und Einstellung „Farbschema der Kachel“ (Symcon-Design, Dunkel, Hell); Kachel-Datei heißt `tile.html`; einheitliche Badges; gemeinsamer Test-Workflow mit Struktur- und Ladetest; Behoben: auf Aurora, Szene und Bild war die Schrift im hellen Symcon-Design kaum lesbar; Kacheldaten werden sicher eingebettet |
 
 ## Lizenz

@@ -89,7 +89,7 @@ class ZendureCloud extends IPSModuleStrict
         $pos = strrpos($decoded, '.');
         $apiUrl = rtrim(substr($decoded, 0, $pos), '/');
         $appKey = substr($decoded, $pos + 1);
-        if ($apiUrl === '' || $appKey === '' || stripos($apiUrl, 'http') !== 0) {
+        if ($apiUrl === '' || $appKey === '' || stripos($apiUrl, 'https://') !== 0) {
             $this->SetStatus(201);
             return false;
         }
@@ -205,7 +205,7 @@ class ZendureCloud extends IPSModuleStrict
             'Port: ' . $info['port'],
             'Client-ID: ' . $info['clientId'],
             'Benutzer: ' . $info['username'],
-            'Passwort: ' . $info['password'],
+            'Passwort: ' . ($info['password'] !== '' ? '•••••••• (wird beim Einrichten automatisch eingetragen)' : '–'),
             '',
             'Abonnements:',
         ];
@@ -295,6 +295,9 @@ class ZendureCloud extends IPSModuleStrict
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT        => 20,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_PROTOCOLS      => CURLPROTO_HTTPS,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'timestamp: ' . $timestamp,

@@ -217,6 +217,8 @@
     .lbl { font-size: 9.5px; fill: var(--muted); letter-spacing: .05em; text-transform: uppercase; paint-order: stroke; stroke: rgba(10, 13, 20, .5); stroke-width: 2.5px; }
     .tag { font-size: 9.5px; font-weight: 600; fill: var(--txt); text-anchor: middle; }
     .tagBg { fill: rgba(20, 24, 32, .8); stroke: var(--track); }
+    /* Unsichtbare Kachel: alle Animationen anhalten (spart Akku und CPU) */
+    html.paused *, html.paused *::before, html.paused *::after { animation-play-state: paused !important; }
 </style>
 
 <div id="bgAurora" class="hidden">
@@ -402,7 +404,15 @@
         }
         return day;
     }
-    setInterval(function () { if (bgMode === 'aurora') placeSky(); }, 60000);
+    setInterval(function () { if (bgMode === 'aurora' && !document.hidden) placeSky(); }, 60000);
+
+    // Kachel nicht sichtbar (anderer Tab, App im Hintergrund): Animationen pausieren
+    function setPaused(p) {
+        document.documentElement.classList.toggle('paused', p);
+        var f = document.getElementById('flow');
+        if (f && f.pauseAnimations) { p ? f.pauseAnimations() : f.unpauseAnimations(); }
+    }
+    document.addEventListener('visibilitychange', function () { setPaused(document.hidden); if (!document.hidden && bgMode === 'aurora') placeSky(); });
 
     // ---------- Energiefluss ----------
     var ICON = {
@@ -531,6 +541,16 @@
     }
     function num(v, d) { return (v === null || v === undefined) ? null : Number(v).toFixed(d).replace('.', ','); }
     function has(v) { return v !== null && v !== undefined; }
+    // Wert mit kleiner Einheit, ohne innerHTML
+    function setUnit(id, val, unit) {
+        var el = document.getElementById(id);
+        el.textContent = '';
+        if (val === null || val === undefined || val === '') { el.textContent = '–'; return; }
+        el.appendChild(document.createTextNode(String(val)));
+        var sm = document.createElement('small');
+        sm.textContent = unit;
+        el.appendChild(sm);
+    }
 
     // Leuchtende Punkte, die entlang der Leitung fließen
     function setFlow(k, watt, reverse) {
@@ -608,7 +628,7 @@
         else { pill.classList.add('idle'); txt.textContent = 'Ruhezustand'; }
         if (s.online && s.bypass) txt.textContent += ' · Bypass';
 
-        document.getElementById('cSoc').innerHTML = has(soc) ? soc + '<small>%</small>' : '–';
+        setUnit('cSoc', has(soc) ? Math.round(Number(soc)) : null, '%');
         document.getElementById('cSocBar').style.width = Math.max(0, Math.min(100, soc || 0)) + '%';
 
         var t = charging ? fmtTime(s.remainCharge) : discharging ? fmtTime(s.remainDischarge) : null;
@@ -616,8 +636,8 @@
         document.getElementById('cTime').textContent = t || '–';
 
         var e = has(s.energyPlant) ? s.energyPlant : s.energyHub;
-        document.getElementById('cEnergy').innerHTML = has(e) ? num(e, 2) + '<small>kWh</small>' : '–';
-        document.getElementById('cTemp').innerHTML = has(s.temp) ? num(s.temp, 1) + '<small>°C</small>' : '–';
+        setUnit('cEnergy', has(e) ? num(e, 2) : null, 'kWh');
+        setUnit('cTemp', has(s.temp) ? num(s.temp, 1) : null, '°C');
 
         // Tag, solange die Sonne liefert (sonst Uhrzeit)
         var hour = new Date().getHours();
