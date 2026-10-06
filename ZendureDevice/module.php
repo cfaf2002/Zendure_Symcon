@@ -807,22 +807,27 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         return true;
     }
 
+    // IPSModuleStrict: Nutzdaten im Datenfluss (auch „Payload“ beim MQTT Client) sind HEX-kodiert,
+    // nicht UTF-8 wie bei IPSModule. Mit UTF-8 kamen gesendete Befehle beim Gerät nicht lesbar an.
     private function EncodePayload(string $payload): string
     {
-        return mb_convert_encoding($payload, 'UTF-8', 'ISO-8859-1');
+        return bin2hex($payload);
     }
 
     private function DecodePayload(string $payload): string
     {
-        $decoded = mb_convert_encoding($payload, 'ISO-8859-1', 'UTF-8');
-        if (json_decode($decoded) === null && json_decode($payload) !== null) {
-            $decoded = $payload;
-        }
-        // Fallback für hex-kodierte Payloads
-        if (json_decode($decoded) === null && strlen($payload) % 2 === 0 && ctype_xdigit($payload)) {
+        // Regelfall: HEX-kodiert
+        if ($payload !== '' && strlen($payload) % 2 === 0 && ctype_xdigit($payload)) {
             $decoded = (string) hex2bin($payload);
+            if (json_decode($decoded) !== null) {
+                return $decoded;
+            }
         }
-        return $decoded;
+        // Rückfall für ältere Symcon-Versionen bzw. Klartext
+        if (json_decode($payload) !== null) {
+            return $payload;
+        }
+        return mb_convert_encoding($payload, 'ISO-8859-1', 'UTF-8');
     }
 
     // ---------------------------------------------------------------------
