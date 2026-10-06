@@ -67,6 +67,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         $this->RegisterPropertyInteger('DirectPVVariable2', 0);
         $this->RegisterPropertyInteger('InverterEnergyTodayVariable', 0);
         // Kachel-Hintergrund
+        $this->RegisterPropertyInteger('TileTheme', 0);            // 0 = Symcon-Design, 1 = Dunkel, 2 = Hell
         $this->RegisterPropertyString('TileBackground', 'aurora'); // aurora | scene | image | none
         $this->RegisterPropertyInteger('TileImage', 0);            // Medienobjekt (Bild)
         $this->RegisterPropertyInteger('TileImageOpacity', 30);    // %
@@ -134,7 +135,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         $this->EnableAction('DischargePower');
 
         if (IPS_GetKernelRunlevel() === KR_READY) {
-            $this->UpdateVisualizationValue(json_encode(['background' => $this->TileBackground()]));
+            $this->UpdateVisualizationValue((string) json_encode(['background' => $this->TileBackground(), 'theme' => $this->ReadPropertyInteger('TileTheme')]));
         }
 
         $deviceKey = trim($this->ReadPropertyString('DeviceKey'));
@@ -468,7 +469,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         $state = $this->BuildTileState();
         $state['background'] = $this->TileBackground();
         $html = file_get_contents(__DIR__ . '/tile.html');
-        return str_replace('__INITIAL_STATE__', json_encode($state), $html);
+        return str_replace('__INITIAL_STATE__', (string) json_encode($state, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), (string) $html);
     }
 
     /** Hintergrund der Kachel: eingebaute Szene, eigenes Bild (Medienobjekt) oder keiner. */
@@ -629,7 +630,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
 
     private function UpdateTile(): void
     {
-        $this->UpdateVisualizationValue(json_encode($this->BuildTileState()));
+        $this->UpdateVisualizationValue((string) json_encode($this->BuildTileState()));
     }
 
     private function BuildTileState(): array
@@ -643,6 +644,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
             $packs = count(json_decode($this->ReadAttributeString('Packs'), true) ?: []);
         }
         return [
+            'theme'           => $this->ReadPropertyInteger('TileTheme'),
             'online'          => (bool) $num('Online'),
             'solar'           => (int) ($num('solarInputPower') ?? 0),
             'home'            => (int) ($num('outputHomePower') ?? 0),

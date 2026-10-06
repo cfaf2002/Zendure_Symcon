@@ -1,12 +1,17 @@
 # Zendure für IP-Symcon
 
-[![Version](https://img.shields.io/badge/Version-2.1-blue)](library.json)
-[![IP-Symcon](https://img.shields.io/badge/IP--Symcon-ab%208.1-0A7BBB)](https://www.symcon.de)
-[![Symcon 9.0](https://img.shields.io/badge/optimiert%20f%C3%BCr-Symcon%209.0-0A7BBB)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net)
+[![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
+[![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
+[![Modul-Version 2.2 (Build 11)](https://img.shields.io/badge/Modul--Version-2.2_(Build_11)-informational.svg)](library.json)
+[![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
+[![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
+[![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
+[![Variablen: Darstellungen](https://img.shields.io/badge/Variablen-Darstellungen-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/darstellungen/)
+[![Kachel-Visualisierung: HTML-SDK](https://img.shields.io/badge/Kachel--Visualisierung-HTML--SDK-orange.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/html-sdk/)
+[![Farbschema: Symcon-Design, Dunkel, Hell](https://img.shields.io/badge/Farbschema-Symcon--Design_%7C_Dunkel_%7C_Hell-blueviolet.svg)](STYLEGUIDE.md)
+![Sprache: Deutsch](https://img.shields.io/badge/Sprache-Deutsch-blueviolet.svg)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green.svg)](LICENSE)
 [![Zendure](https://img.shields.io/badge/Zendure-SolarFlow%20Hub%201200%20%7C%202000-2FBF71)](https://zendure.de)
-[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green)](LICENSE)
-[![Letzter Commit](https://img.shields.io/github/last-commit/cfaf2002/Zendure_Symcon)](https://github.com/cfaf2002/Zendure_Symcon/commits)
 
 Modul zum Auslesen und Steuern von **Zendure SolarFlow Hub 1200 / Hub 2000** in IP-Symcon – wahlweise über die **Zendure-Cloud** oder einen **lokalen MQTT-Broker**.
 
@@ -123,6 +128,12 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 - Die Cloud-Anbindung nutzt dieselbe Schnittstelle wie die offizielle Zendure-Integration für Home Assistant. Zendure kann diese jederzeit ändern.
 - Ob der Hub `outputLimit` direkt übernimmt, hängt vom eingestellten Modus in der App ab. Greift das Limit nicht, `ZEND_SetDischargePower` verwenden.
 - Häufiges Schreiben (z. B. sekündliche Nulleinspeisungs-Regelung) möglichst vermeiden.
+
+## Changelog
+
+| Version | Build | Datum | Beschreibung |
+|---|---|---|---|
+| 2.2 | 11 | 06.10.2026 | Einheitliches Design nach `STYLEGUIDE.md`: Kachel-Grundlage (Farben, Schrift, Radien, Zustandsfarben) und Einstellung „Farbschema der Kachel“ (Symcon-Design, Dunkel, Hell); Kachel-Datei heißt `tile.html`; einheitliche Badges; gemeinsamer Test-Workflow mit Struktur- und Ladetest; Behoben: auf Aurora, Szene und Bild war die Schrift im hellen Symcon-Design kaum lesbar; Kacheldaten werden sicher eingebettet |
 
 ## Lizenz
 

@@ -1,28 +1,73 @@
+<!--
+    Kachel für das Modul "Zendure Gerät" (IP-Symcon HTML-SDK)
+    Copyright (c) 2026 Armin Frohwerk · MIT-Lizenz (siehe LICENSE)
+    SPDX-License-Identifier: MIT
+
+    Energiefluss (Solar, Akku, Haus, Wechselrichter) und Kennzahlen; Hintergrund Aurora, Szene, eigenes Bild oder keiner (dann Farbschema).
+    Gestaltung nach STYLEGUIDE.md (Kachel-Grundlage, Farbschema über applyTheme).
+-->
 <style>
+    /* ===== Hausstil cfaf2002 · Kachel-Grundlage v1 (siehe STYLEGUIDE.md) =====
+       Farbschema 0 = Symcon-Design (Farben der Visualisierung), 1 = Dunkel, 2 = Hell.
+       Modulspezifisch ist nur --brand (Akzent der festen Farbschemas). */
+    :root {
+        --brand: #4fe3b4;
+        --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --fg: var(--content-color, #eef3f7);
+        --accent: var(--accent-color, var(--brand));
+        --on-accent: #ffffff;
+        --muted: color-mix(in srgb, var(--fg) 65%, transparent);
+        --faint: color-mix(in srgb, var(--fg) 40%, transparent);
+        --line: color-mix(in srgb, var(--fg) 15%, transparent);
+        --surface: color-mix(in srgb, var(--fg) 7%, transparent);
+        --surface-hover: color-mix(in srgb, var(--fg) 12%, transparent);
+        --popup: var(--card-color, #232a33);
+        --ok: #34b36b;
+        --warn: #e2a63b;
+        --bad: #e5484d;
+        --info: #4b8ef0;
+        --off: #8796a5;
+        --radius-l: 14px;
+        --radius: 12px;
+        --radius-s: 8px;
+        --pill: 999px;
+        --gap: 8px;
+    }
+    html.theme-dark  { --fg: #eef3f7; --accent: var(--brand); --tile-bg: #1b2530; --popup: #232d39; }
+    html.theme-light { --fg: #1d2b36; --accent: var(--brand); --tile-bg: #e9eef3; --popup: #ffffff; }
+    html.theme-dark body, html.theme-light body { background: var(--tile-bg); }
+    html, body { font-family: var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+    /* ===== Ende Kachel-Grundlage ===== */
+
     :root {
         --pv: #ffc94a;
         --bat: #4fe3b4;
         --bat2: #22b8cf;
         --home: #5aa9ff;
-        --txt: var(--content-color, #eef1f6);
+        --txt: #eef1f6;         /* auf Aurora, Szene und Bild immer helle Schrift */
         --muted: rgba(178, 186, 200, .95);
         --card: rgba(20, 24, 32, .42);
         --card-b: rgba(190, 200, 215, .14);
         --track: rgba(170, 180, 195, .18);
     }
-    /* Kachelschema von Symcon: ohne eigenen Hintergrund die Theme-Farben übernehmen (hell und dunkel) */
+    /* Hintergrund „Keiner“: Farben aus dem Farbschema der Kachel (Kachel-Grundlage) */
     body.theme {
-        --card: color-mix(in srgb, var(--card-color, #2b2f36) 70%, transparent);
-        --card-b: color-mix(in srgb, var(--content-color, #eef1f6) 12%, transparent);
-        --muted: color-mix(in srgb, var(--content-color, #eef1f6) 62%, transparent);
-        --track: color-mix(in srgb, var(--content-color, #eef1f6) 16%, transparent);
-        --node-a: color-mix(in srgb, var(--card-color, #2b2f36) 80%, var(--content-color, #fff) 20%);
-        --node-b: var(--card-color, #1b1e25);
+        --txt: var(--fg);
+        --card: var(--surface);
+        --card-b: var(--line);
+        --muted: color-mix(in srgb, var(--fg) 65%, transparent);
+        --track: var(--surface-hover);
+        --node-a: color-mix(in srgb, var(--tile-bg, var(--card-color, #2b2f36)) 80%, var(--fg) 20%);
+        --node-b: var(--tile-bg, var(--card-color, #1b1e25));
     }
-    body.theme { --hub-a: var(--content-color, #f1f4f9); --hub-b: color-mix(in srgb, var(--content-color, #9aa4b4) 65%, transparent); }
-    body.theme .tagBg { fill: var(--card-color, #2b2f36); }
-    body.theme .tag { fill: var(--content-color, #eef1f6); }
-    body.theme .bar i { background: var(--accent-color, #4fe3b4); }
+    body.theme { --hub-a: var(--fg); --hub-b: color-mix(in srgb, var(--fg) 65%, transparent); }
+    body.theme .tagBg { fill: var(--tile-bg, var(--card-color, #2b2f36)); }
+    body.theme .tag { fill: var(--fg); }
+    body.theme .bar i { background: var(--accent); }
     body.theme .val, body.theme .lbl { stroke: none; }
     body.theme .glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
     .click { cursor: pointer; }
@@ -30,7 +75,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; height: 100%; background: transparent; overflow: hidden; }
     body {
-        font-family: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: var(--font);
         color: var(--txt);
         font-size: clamp(10px, 2.6vmin, 15px);
         -webkit-font-smoothing: antialiased;
@@ -131,14 +176,14 @@
     .glass { background: var(--card); border: 1px solid var(--card-b); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
     .pill {
         grid-column: 1 / -1; display: flex; align-items: center; gap: .55em;
-        padding: .5em .9em; border-radius: 999px; font-weight: 600; letter-spacing: .01em;
+        padding: .5em .9em; border-radius: var(--pill); font-weight: 600; letter-spacing: .01em;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .dot { width: .6em; height: .6em; border-radius: 50%; background: var(--muted); flex: none; }
     .pill.charge { color: var(--bat); }   .pill.charge .dot { background: var(--bat); animation: pulse 2s infinite; }
     .pill.discharge { color: var(--pv); } .pill.discharge .dot { background: var(--pv); animation: pulseY 2s infinite; }
     .pill.idle { color: var(--muted); }
-    .pill.offline { color: #ff7d7d; }     .pill.offline .dot { background: #ff7d7d; }
+    .pill.offline { color: var(--bad); }  .pill.offline .dot { background: var(--bad); }
     @keyframes pulse  { 0% { box-shadow: 0 0 0 0 rgba(79, 227, 180, .6); } 70%, 100% { box-shadow: 0 0 0 .6em rgba(79, 227, 180, 0); } }
     @keyframes pulseY { 0% { box-shadow: 0 0 0 0 rgba(255, 201, 74, .6); } 70%, 100% { box-shadow: 0 0 0 .6em rgba(255, 201, 74, 0); } }
 
@@ -218,6 +263,13 @@
 </div>
 
 <script>
+    // Hausstil: Farbschema der Kachel (0 = Symcon-Design, 1 = Dunkel, 2 = Hell)
+    function applyTheme(theme) {
+        var root = document.documentElement;
+        root.classList.toggle('theme-dark', theme === 1);
+        root.classList.toggle('theme-light', theme === 2);
+    }
+
 (function () {
     var NS = 'http://www.w3.org/2000/svg';
     var svg = document.getElementById('flow');
@@ -591,6 +643,7 @@
     window.handleMessage = function (data) {
         try {
             var d = typeof data === 'string' ? JSON.parse(data) : data;
+            if (typeof d.theme === 'number') applyTheme(d.theme);
             for (var k in d) state[k] = d[k];   // Teil-Updates (z. B. nur Hintergrund) zusammenführen
             render(state);
             wireClicks(state.objects);
