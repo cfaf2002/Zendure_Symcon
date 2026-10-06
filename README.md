@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 2.3 (Build 13)](https://img.shields.io/badge/Modul--Version-2.3_(Build_13)-informational.svg)](library.json)
+[![Modul-Version 2.3 (Build 14)](https://img.shields.io/badge/Modul--Version-2.3_(Build_14)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -133,6 +133,7 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 
 | Version | Build | Datum | Beschreibung |
 |---|---|---|---|
+| 2.3 | 14 | 06.10.2026 | Hausstil: Regel für die Modulliste (`vendor` gesetzt, höchstens ein Alias) in `STYLEGUIDE.md` und Strukturprüfung ergänzt; Modulliste: Zendure Cloud und Zendure SolarFlow Hub erscheinen nur noch einmal statt zusätzlich unter „Zendure Konto“, „Zendure Hub 1200“ und „Zendure Hub 2000“ |
 | 2.3 | 13 | 06.10.2026 | Behoben: Befehle an das Gerät (MQTT) wurden seit dem Umstieg auf `IPSModuleStrict` UTF-8-kodiert an den MQTT Client übergeben – Symcon erwartet bei `IPSModuleStrict` HEX. Senden jetzt HEX-kodiert, Empfang HEX mit Rückfall auf Klartext |
 | 2.3 | 12 | 06.10.2026 | Sicherheit: MQTT-Passwort wird bei „Zugangsdaten anzeigen“ nicht mehr im Klartext gezeigt; Cloud-Abruf nur noch über HTTPS mit ausdrücklicher Zertifikatsprüfung; interne Bildfunktion nicht mehr als Befehl `ZEND_scaleImage` sichtbar. Geschwindigkeit: Variablen werden nur noch bei geänderten Werten geschrieben; Animationen der Kachel pausieren, solange sie nicht sichtbar ist. Kachelwerte werden ohne `innerHTML` gesetzt |
 | 2.2 | 11 | 06.10.2026 | Einheitliches Design nach `STYLEGUIDE.md`: Kachel-Grundlage (Farben, Schrift, Radien, Zustandsfarben) und Einstellung „Farbschema der Kachel“ (Symcon-Design, Dunkel, Hell); Kachel-Datei heißt `tile.html`; einheitliche Badges; gemeinsamer Test-Workflow mit Struktur- und Ladetest; Behoben: auf Aurora, Szene und Bild war die Schrift im hellen Symcon-Design kaum lesbar; Kacheldaten werden sicher eingebettet |

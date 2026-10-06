@@ -85,6 +85,15 @@ foreach ($modules as $moduleJson) {
         $fail("$name/module.json: GUID doppelt (auch in {$ids[$id]})");
     }
     $ids[$id] = $name;
+    // Modulliste: Hersteller gesetzt (sonst „(Gerät)“), höchstens ein Anzeigename (jeder Alias = eigene Zeile)
+    $checks++;
+    if (trim((string) ($module['vendor'] ?? '')) === '') {
+        $fail("$name/module.json: vendor fehlt (Modulliste zeigt sonst „(Gerät)“)");
+    }
+    $checks++;
+    if (count((array) ($module['aliases'] ?? [])) > 1) {
+        $fail("$name/module.json: mehr als ein Alias – jeder erscheint als eigene Zeile in der Modulliste");
+    }
     $checks++;
     if (!preg_match('/^[A-Z][A-Z0-9]*$/', (string) ($module['prefix'] ?? ''))) {
         $fail("$name/module.json: Präfix fehlt oder nicht in Großbuchstaben");

@@ -46,6 +46,9 @@ Empfohlene Gliederung für neue Module: Inhalt · Funktionsumfang · Voraussetzu
 - Basisklasse `IPSModuleStrict` mit vollständigen Typangaben.
 - Variablen mit **Darstellungen** (`PRESENTATION`), keine eigenen Profile. Alte Profile des Moduls beim Aktualisieren aufräumen, sobald keine Variable sie mehr nutzt.
 - Präfix in Großbuchstaben, eines pro Modul oder pro Bibliothek (`EASEE`, `MARKISE`, `EINK` …).
+- `module.json` bestimmt, wie das Modul in der Modulliste von Symcon erscheint (Spalten *Hersteller* und *Gerät*):
+  - `vendor` ist nie leer – sonst steht dort „(Gerät)“. Eingetragen wird der Hersteller des Geräts bzw. der Anbieter des Dienstes (`Easee`, `EZVIZ`, `PEGELONLINE (WSV)`); bei Modulen ohne fremdes Gerät ein Oberbegriff (`Webcam`) oder der Autor (`Armin Frohwerk`).
+  - `aliases` hat **höchstens einen** Eintrag: einen lesbaren Anzeigenamen, wenn `name` technisch ist (`Bring Konto` statt `Konto`). Jeder Alias erscheint als eigene Zeile in der Modulliste – Suchbegriffe oder Gerätevarianten gehören deshalb nicht hinein.
 - Dateikopf: `declare(strict_types=1);` und `SPDX-License-Identifier: MIT`.
 - Zugangsdaten nie ins Debug oder Meldungsfenster; HTTPS mit Zeitlimit; Werte für die Kachel als JSON mit `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT`.
 - Variablen nur schreiben, wenn sich der Wert ändert.
@@ -94,4 +97,4 @@ Eigene Variablen eines Moduls (z. B. für ein Diagramm) sind erlaubt, werden abe
 
 ## 6. Tests
 
-`tests/structure.php` prüft: JSON-Dateien gültig, GUIDs eindeutig und im richtigen Format, Präfix vorhanden, jede Eigenschaft im Formular ist im Modul registriert, die Kachel-Datei existiert und enthält die Kachel-Grundlage, und Module, die `Buffer`/`Payload` von Symcon-I/O-Instanzen (Socket, Serial Port, UDP, MQTT) selbst verarbeiten, senden mit `bin2hex()` und lesen mit `hex2bin()` (kein `utf8_encode`/`utf8_decode`). `tests/stubs.php` legt jede Instanz mit den Symcon-Stubs an, öffnet das Formular, erzeugt die Kachel und schaltet das Farbschema durch. Weitergehende Tests (Fixtures, nachgebaute Cloud) wie in Markisensteuerung, Pegelstand, Easee und Hoymiles sind willkommen.
+`tests/structure.php` prüft: JSON-Dateien gültig, GUIDs eindeutig und im richtigen Format, Präfix vorhanden, `vendor` gesetzt und höchstens ein Alias, jede Eigenschaft im Formular ist im Modul registriert, die Kachel-Datei existiert und enthält die Kachel-Grundlage, und Module, die `Buffer`/`Payload` von Symcon-I/O-Instanzen (Socket, Serial Port, UDP, MQTT) selbst verarbeiten, senden mit `bin2hex()` und lesen mit `hex2bin()` (kein `utf8_encode`/`utf8_decode`). `tests/stubs.php` legt jede Instanz mit den Symcon-Stubs an, öffnet das Formular, erzeugt die Kachel und schaltet das Farbschema durch. Weitergehende Tests (Fixtures, nachgebaute Cloud) wie in Markisensteuerung, Pegelstand, Easee und Hoymiles sind willkommen.
