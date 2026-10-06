@@ -337,20 +337,20 @@ class ZendureSolarFlowHub extends IPSModuleStrict
 
                 switch ($type) {
                     case 0:
-                        $this->SetValue($key, (int) $value !== 0);
+                        $this->SetIfChanged($key, (int) $value !== 0);
                         break;
                     case 1:
-                        $this->SetValue($key, (int) round($value / $divisor));
+                        $this->SetIfChanged($key, (int) round($value / $divisor));
                         break;
                     default:
-                        $this->SetValue($key, (float) $value / $divisor);
+                        $this->SetIfChanged($key, (float) $value / $divisor);
                 }
             }
 
             if (array_key_exists('outputPackPower', $props) || array_key_exists('packInputPower', $props)) {
                 $charge = $this->ValueOrZero('outputPackPower');
                 $discharge = $this->ValueOrZero('packInputPower');
-                $this->SetValue('BatteryPower', $charge - $discharge);
+                $this->SetIfChanged('BatteryPower', $charge - $discharge);
             }
         }
 
@@ -362,7 +362,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
                 }
             }
             if (count($temps) > 0) {
-                $this->SetValue('BatteryTemperature', max($temps));
+                $this->SetIfChanged('BatteryTemperature', (float) max($temps));
             }
             if ($this->ReadPropertyBoolean('ShowPacks')) {
                 $this->HandlePacks($json['packData']);
@@ -394,15 +394,15 @@ class ZendureSolarFlowHub extends IPSModuleStrict
 
             if (isset($pack['socLevel'])) {
                 $this->EnsureVariable($prefix . 'SoC', $label . 'Ladezustand', 1, 'soc', $pos, false);
-                $this->SetValue($prefix . 'SoC', (int) $pack['socLevel']);
+                $this->SetIfChanged($prefix . 'SoC', (int) $pack['socLevel']);
             }
             if (isset($pack['maxTemp'])) {
                 $this->EnsureVariable($prefix . 'Temp', $label . 'Temperatur', 2, 'temp', $pos + 1, false);
-                $this->SetValue($prefix . 'Temp', round(((float) $pack['maxTemp'] - 2731) / 10, 1));
+                $this->SetIfChanged($prefix . 'Temp', round(((float) $pack['maxTemp'] - 2731) / 10, 1));
             }
             if (isset($pack['totalVol'])) {
                 $this->EnsureVariable($prefix . 'Volt', $label . 'Spannung', 2, 'volt', $pos + 2, false);
-                $this->SetValue($prefix . 'Volt', round((float) $pack['totalVol'] / 100, 2));
+                $this->SetIfChanged($prefix . 'Volt', round((float) $pack['totalVol'] / 100, 2));
             }
             if (isset($pack['batcur'])) {
                 $cur = (int) $pack['batcur'];
@@ -410,11 +410,11 @@ class ZendureSolarFlowHub extends IPSModuleStrict
                     $cur -= 65536;
                 }
                 $this->EnsureVariable($prefix . 'Current', $label . 'Strom', 2, 'ampere', $pos + 3, false);
-                $this->SetValue($prefix . 'Current', round($cur / 10, 1));
+                $this->SetIfChanged($prefix . 'Current', round($cur / 10, 1));
             }
             if (isset($pack['power'])) {
                 $this->EnsureVariable($prefix . 'Power', $label . 'Leistung', 1, 'battery', $pos + 4, false);
-                $this->SetValue($prefix . 'Power', (int) $pack['power']);
+                $this->SetIfChanged($prefix . 'Power', (int) $pack['power']);
             }
         }
     }
@@ -439,6 +439,14 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         $power = $this->ValueOrZero('solarInputPower');
         if ($power > 0) {
             $this->SetValue('SolarEnergyToday', round($this->GetValue('SolarEnergyToday') + $power * $dt / 3600000, 4));
+        }
+    }
+
+    /** Schreibt eine Variable nur, wenn sich der Wert geändert hat (weniger Last und Archivdaten). */
+    private function SetIfChanged(string $ident, mixed $value): void
+    {
+        if ($this->GetValue($ident) !== $value) {
+            $this->SetValue($ident, $value);
         }
     }
 
@@ -536,7 +544,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         return $uri;
     }
 
-    public static function scaleImage(string $base64, string $mime, int $maxSize): ?array
+    private static function scaleImage(string $base64, string $mime, int $maxSize): ?array
     {
         $raw = base64_decode($base64, true);
         if ($mime === 'image/svg+xml' || $raw === false || !function_exists('imagecreatefromstring')) {
