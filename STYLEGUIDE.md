@@ -49,6 +49,7 @@ Empfohlene Gliederung für neue Module: Inhalt · Funktionsumfang · Voraussetzu
 - Dateikopf: `declare(strict_types=1);` und `SPDX-License-Identifier: MIT`.
 - Zugangsdaten nie ins Debug oder Meldungsfenster; HTTPS mit Zeitlimit; Werte für die Kachel als JSON mit `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT`.
 - Variablen nur schreiben, wenn sich der Wert ändert.
+- **Datenfluss ist bei `IPSModuleStrict` HEX-kodiert:** Nutzdaten an Symcon-I/O-Instanzen (`Buffer` bei Client Socket, Server Socket, Serial Port und UDP; `Payload` bei MQTT Client und Server) mit `bin2hex()` senden und eingehend mit `hex2bin()` lesen – nicht mehr mit `utf8_encode`/`mb_convert_encoding` wie bei `IPSModule`. Eingehend vorher prüfen (`ctype_xdigit`, gerade Länge); ein Rückfall auf Klartext ist nur für ältere Symcon-Versionen gedacht. Beim Umstieg auf `IPSModuleStrict` jede Stelle mit `SendDataToParent`, `ReceiveData`, `ForwardData` und `SendDataToChildren` prüfen. Der JSON-Austausch zwischen eigenen Modulen über eigene DataIDs ist davon nicht betroffen.
 
 ## 4. Kachel
 
@@ -93,4 +94,4 @@ Eigene Variablen eines Moduls (z. B. für ein Diagramm) sind erlaubt, werden abe
 
 ## 6. Tests
 
-`tests/structure.php` prüft: JSON-Dateien gültig, GUIDs eindeutig und im richtigen Format, Präfix vorhanden, jede Eigenschaft im Formular ist im Modul registriert, die Kachel-Datei existiert und enthält die Kachel-Grundlage. `tests/stubs.php` legt jede Instanz mit den Symcon-Stubs an, öffnet das Formular, erzeugt die Kachel und schaltet das Farbschema durch. Weitergehende Tests (Fixtures, nachgebaute Cloud) wie in Markisensteuerung, Pegelstand, Easee und Hoymiles sind willkommen.
+`tests/structure.php` prüft: JSON-Dateien gültig, GUIDs eindeutig und im richtigen Format, Präfix vorhanden, jede Eigenschaft im Formular ist im Modul registriert, die Kachel-Datei existiert und enthält die Kachel-Grundlage, und Module, die `Buffer`/`Payload` von Symcon-I/O-Instanzen (Socket, Serial Port, UDP, MQTT) selbst verarbeiten, senden mit `bin2hex()` und lesen mit `hex2bin()` (kein `utf8_encode`/`utf8_decode`). `tests/stubs.php` legt jede Instanz mit den Symcon-Stubs an, öffnet das Formular, erzeugt die Kachel und schaltet das Farbschema durch. Weitergehende Tests (Fixtures, nachgebaute Cloud) wie in Markisensteuerung, Pegelstand, Easee und Hoymiles sind willkommen.

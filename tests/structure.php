@@ -151,6 +151,30 @@ foreach ($modules as $moduleJson) {
         $walk($form['elements'] ?? []);
     }
 
+    // Datenfluss zu Symcon-I/O-Instanzen (Socket, Serial Port, UDP, MQTT): bei IPSModuleStrict HEX-kodiert
+    $ioTx = ['{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}', '{C8792760-65CF-4C53-B5C7-A30FCC84FEFE}',
+        '{8E4D9B23-E0F2-1E05-41D8-C21EA53B8706}', '{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}'];
+    $ioRx = ['{018EF6B5-AB94-40C6-AA53-46943E824ACF}', '{7A1272A4-CBDB-46EF-BFC6-DCF4A53D2FC7}',
+        '{9082C662-7864-D5CE-863F-53999200D897}', '{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}'];
+    $checks++;
+    if (preg_match('/\butf8_(en|de)code\s*\(/', $php)) {
+        $fail("$name: utf8_encode/utf8_decode verwendet – Datenfluss bei IPSModuleStrict ist HEX (bin2hex/hex2bin)");
+    }
+    // Nur Module, die Buffer/Payload selbst lesen oder schreiben (reine Durchreicher und Konfiguratoren nicht)
+    $ownsData = (bool) preg_match('/[\'"](Buffer|BufferHex|Payload)[\'"]/', $php);
+    if ($ownsData && array_intersect(array_map('strtoupper', (array) ($module['parentRequirements'] ?? [])), $ioTx) !== []) {
+        $checks++;
+        if (!str_contains($php, 'bin2hex(')) {
+            $fail("$name: Daten an die I/O-Instanz werden nicht HEX-kodiert gesendet (bin2hex fehlt)");
+        }
+    }
+    if ($ownsData && array_intersect(array_map('strtoupper', (array) ($module['implemented'] ?? [])), $ioRx) !== []) {
+        $checks++;
+        if (!str_contains($php, 'hex2bin(')) {
+            $fail("$name: Daten der I/O-Instanz werden nicht HEX-dekodiert gelesen (hex2bin fehlt)");
+        }
+    }
+
     $hasTile = str_contains($php, 'GetVisualizationTile');
     if ($hasTile) {
         $checks++;
