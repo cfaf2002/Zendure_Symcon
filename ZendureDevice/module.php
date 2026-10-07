@@ -12,6 +12,8 @@ declare(strict_types=1);
 class ZendureSolarFlowHub extends IPSModuleStrict
 {
     private const MQTT_TX = '{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}';
+    private const MAX_PACKS = 6;        // Variablen Pack1_ … Pack6_
+    private const PACK_STALE_DAYS = 2;  // so lange nicht mehr gemeldet = ausgebaut, Platz wird wiederverwendet
 
     private const PRODUCT_KEYS = [
         'Hub 1200' => '73bkTV',
@@ -73,6 +75,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         $this->RegisterPropertyInteger('TileImageOpacity', 30);    // %
 
         $this->RegisterAttributeString('Packs', '[]');
+        $this->RegisterAttributeString('PacksSeen', '{}');   // Seriennummer => Datum der letzten Meldung
         $this->RegisterAttributeInteger('MessageId', 0);
         $this->RegisterAttributeString('WatchedVariables', '[]');
         $this->RegisterAttributeInteger('EnergyLastTs', 0);
@@ -375,6 +378,9 @@ class ZendureSolarFlowHub extends IPSModuleStrict
     private function HandlePacks(array $packs): void
     {
         $known = json_decode($this->ReadAttributeString('Packs'), true) ?: [];
+        $seen = json_decode($this->ReadAttributeString('PacksSeen'), true) ?: [];
+        $today = date('Y-m-d');
+        $seenChanged = false;
 
         foreach ($packs as $pack) {
             $sn = (string) ($pack['sn'] ?? '');
@@ -383,9 +389,17 @@ class ZendureSolarFlowHub extends IPSModuleStrict
             }
             $index = array_search($sn, $known, true);
             if ($index === false) {
-                $known[] = $sn;
-                $index = count($known) - 1;
-                $this->WriteAttributeString('Packs', json_encode($known));
+                $index = $this->PackSlot($known, $seen);
+                if (isset($known[$index])) {
+                    $this->SendDebug('Packs', 'Akku ' . ($index + 1) . ': ' . $known[$index] . ' ersetzt durch ' . $sn, 0);
+                    unset($seen[$known[$index]]);
+                }
+                $known[$index] = $sn;
+                $this->WriteAttributeString('Packs', json_encode(array_values($known)));
+            }
+            if (($seen[$sn] ?? '') !== $today) {
+                $seen[$sn] = $today;
+                $seenChanged = true;
             }
             $n = $index + 1;
             $prefix = 'Pack' . $n . '_';
@@ -417,6 +431,35 @@ class ZendureSolarFlowHub extends IPSModuleStrict
                 $this->SetIfChanged($prefix . 'Power', (int) $pack['power']);
             }
         }
+        if ($seenChanged) {
+            $this->WriteAttributeString('PacksSeen', json_encode($seen));
+        }
+    }
+
+    /**
+     * Platz (0-basiert) für einen neuen Akku: freier Platz, sonst der Platz eines Akkus, der seit
+     * PACK_STALE_DAYS Tagen nicht mehr gemeldet wurde (getauscht), sonst der am längsten nicht gesehene.
+     * So bleiben die Nummern nach einem Tausch bei Akku 1 … 6.
+     */
+    private function PackSlot(array $known, array $seen): int
+    {
+        if (count($known) < self::MAX_PACKS) {
+            return count($known);
+        }
+        $oldest = 0;
+        $oldestDate = null;
+        foreach (array_slice(array_values($known), 0, self::MAX_PACKS) as $i => $sn) {
+            $date = (string) ($seen[$sn] ?? '');  // ohne Datum: aus einer älteren Version, gilt als lange nicht gesehen
+            if ($oldestDate === null || strcmp($date, $oldestDate) < 0) {
+                $oldest = $i;
+                $oldestDate = $date;
+            }
+        }
+        $stale = $oldestDate === '' || strtotime($oldestDate) <= strtotime('-' . self::PACK_STALE_DAYS . ' days', strtotime('today'));
+        if (!$stale) {
+            $this->SendDebug('Packs', 'Mehr als ' . self::MAX_PACKS . ' Akkus gemeldet – ältester Platz wird überschrieben', 0);
+        }
+        return $oldest;
     }
 
     /** Summiert die Solarleistung des Hubs zum Tagesertrag (kWh), Rücksetzung um Mitternacht. */
@@ -595,8 +638,7 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         ob_start();
         $alpha ? imagepng($out, null, 9) : imagejpeg($out, null, 82);
         $data = (string) ob_get_clean();
-        imagedestroy($img);
-        imagedestroy($out);
+        unset($img, $out); // imagedestroy() ist seit PHP 8.0 wirkungslos und ab PHP 8.5 veraltet
         if ($data === '' || strlen($data) >= strlen($raw)) {
             return null;
         }
@@ -731,12 +773,8 @@ class ZendureSolarFlowHub extends IPSModuleStrict
             return null;
         }
         $value = (float) GetValue($vid);
-        $var = IPS_GetVariable($vid);
-        $profile = $var['VariableCustomProfile'] !== '' ? $var['VariableCustomProfile'] : $var['VariableProfile'];
-        if ($profile !== '' && IPS_VariableProfileExists($profile)) {
-            if (strcasecmp(trim(IPS_GetVariableProfile($profile)['Suffix']), 'Wh') === 0) {
-                $value /= 1000;
-            }
+        if (strcasecmp($this->LinkedSuffix($vid), 'Wh') === 0) {
+            $value /= 1000;
         }
         return round(max(0, $value), 2);
     }
@@ -749,15 +787,41 @@ class ZendureSolarFlowHub extends IPSModuleStrict
             return null;
         }
         $value = (float) GetValue($vid);
-        $var = IPS_GetVariable($vid);
-        $profile = $var['VariableCustomProfile'] !== '' ? $var['VariableCustomProfile'] : $var['VariableProfile'];
-        if ($profile !== '' && IPS_VariableProfileExists($profile)) {
-            $suffix = trim(IPS_GetVariableProfile($profile)['Suffix']);
-            if (strcasecmp($suffix, 'kW') === 0) {
-                $value *= 1000;
-            }
+        if (strcasecmp($this->LinkedSuffix($vid), 'kW') === 0) {
+            $value *= 1000;
         }
         return (int) round(max(0, $value));
+    }
+
+    /** Einheit einer ausgewählten Variable: aus der Darstellung (Symcon 8+), sonst aus dem Variablenprofil. */
+    private function LinkedSuffix(int $vid): string
+    {
+        $var = IPS_GetVariable($vid);
+        $presentations = [];
+        if (function_exists('IPS_GetVariablePresentation')) {
+            $presentations[] = @IPS_GetVariablePresentation($vid);
+        }
+        $presentations[] = $var['VariableCustomPresentation'] ?? [];
+        $presentations[] = $var['VariablePresentation'] ?? [];
+        $profile = '';
+        foreach ($presentations as $p) {
+            if (!is_array($p) || $p === []) {
+                continue;
+            }
+            if (isset($p['SUFFIX']) && trim((string) $p['SUFFIX']) !== '') {
+                return trim((string) $p['SUFFIX']);
+            }
+            if ($profile === '' && !empty($p['PROFILE'])) {
+                $profile = (string) $p['PROFILE']; // Darstellung „Profil“ (Legacy)
+            }
+        }
+        if ($profile === '') {
+            $profile = $var['VariableCustomProfile'] !== '' ? $var['VariableCustomProfile'] : $var['VariableProfile'];
+        }
+        if ($profile !== '' && IPS_VariableProfileExists($profile)) {
+            return trim(IPS_GetVariableProfile($profile)['Suffix']);
+        }
+        return '';
     }
 
     // ---------------------------------------------------------------------

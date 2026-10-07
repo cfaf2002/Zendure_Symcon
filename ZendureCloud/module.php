@@ -22,6 +22,9 @@ class ZendureCloud extends IPSModuleStrict
     private const SIGN_KEY = 'C*dafwArEOXK';
     private const CLIENT_ID = 'zenHa';
 
+    // Nach einem Netz-/Serverfehler früher erneut versuchen: 5 Minuten, dann doppelt so lange bis zum normalen Intervall
+    private const RETRY_FIRST = 300;
+
     public function Create(): void
     {
         parent::Create();
@@ -53,8 +56,9 @@ class ZendureCloud extends IPSModuleStrict
             return;
         }
 
-        $this->SetTimerInterval('Refresh', max(1, $this->ReadPropertyInteger('RefreshHours')) * 3600 * 1000);
-        $this->RefreshDevices();
+        // Abruf kurz nach dem Übernehmen über den Timer, damit das Speichern nicht bis zu 30 s blockiert
+        $this->SetBuffer('RetryCount', '0');
+        $this->SetTimerInterval('Refresh', 1000);
     }
 
     public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
@@ -76,9 +80,12 @@ class ZendureCloud extends IPSModuleStrict
     {
         $token = trim($this->ReadPropertyString('AppToken'));
         if ($token === '') {
+            $this->SetTimerInterval('Refresh', 0);
             $this->SetStatus(104);
             return false;
         }
+        // Regelfall: nächster Abruf im eingestellten Intervall; bei Netzfehlern unten früher
+        $this->ScheduleRefresh(false);
 
         $decoded = base64_decode($token, true);
         if ($decoded === false || strpos($decoded, '.') === false) {
@@ -96,7 +103,13 @@ class ZendureCloud extends IPSModuleStrict
 
         $result = $this->ApiRequest($apiUrl . '/api/ha/deviceList', ['appKey' => $appKey]);
         if ($result === null) {
-            $this->SetStatus(202);
+            // Netz- oder Serverfehler: kein Problem mit dem Cloud-Key. Sind die MQTT-Zugangsdaten schon da,
+            // läuft die Verbindung weiter – Status nicht auf Fehler setzen, sonst stehen alle Geräte still.
+            $this->ScheduleRefresh(true);
+            $info = json_decode($this->ReadAttributeString('MqttInfo'), true);
+            if (empty($info['host'])) {
+                $this->SetStatus(202);
+            }
             return false;
         }
         if (($result['code'] ?? 0) != 200 || empty($result['success'])) {
@@ -143,6 +156,7 @@ class ZendureCloud extends IPSModuleStrict
         }
 
         $this->SendDebug('API', count($devices) . ' Gerät(e) gefunden', 0);
+        $this->SetBuffer('RetryCount', '0');
         $this->SetStatus(102);
 
         if ($this->ReadPropertyBoolean('AutoConfigureParent')) {
@@ -317,9 +331,31 @@ class ZendureCloud extends IPSModuleStrict
             return null;
         }
         $this->SendDebug('API', 'HTTP ' . $httpCode . ': ' . $this->MaskSecrets((string) $response), 0);
+        if ($httpCode >= 500 || $httpCode === 429) {
+            // Serverstörung oder zu viele Anfragen – wie „nicht erreichbar“ behandeln, nicht als abgelehnten Cloud-Key
+            $this->LogMessage('Zendure-Cloud vorübergehend gestört (HTTP ' . $httpCode . ')', KL_WARNING);
+            return null;
+        }
 
         $json = json_decode((string) $response, true);
         return is_array($json) ? $json : null;
+    }
+
+    /**
+     * Nächsten Abruf planen: normal im eingestellten Intervall, nach einem Netz-/Serverfehler
+     * früher (5 Minuten, dann doppelt so lange, höchstens bis zum normalen Intervall).
+     */
+    private function ScheduleRefresh(bool $networkError): void
+    {
+        $normal = max(1, $this->ReadPropertyInteger('RefreshHours')) * 3600;
+        $wait = $normal;
+        if ($networkError) {
+            $count = (int) $this->GetBuffer('RetryCount') + 1;
+            $this->SetBuffer('RetryCount', (string) $count);
+            $wait = (int) min($normal, self::RETRY_FIRST * 2 ** min(10, $count - 1));
+            $this->SendDebug('API', 'Neuer Versuch in ' . round($wait / 60) . ' Minuten', 0);
+        }
+        $this->SetTimerInterval('Refresh', $wait * 1000);
     }
 
     private function MaskSecrets(string $text): string

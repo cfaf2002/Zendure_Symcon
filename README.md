@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 2.3 (Build 14)](https://img.shields.io/badge/Modul--Version-2.3_(Build_14)-informational.svg)](library.json)
+[![Modul-Version 2.4 (Build 15)](https://img.shields.io/badge/Modul--Version-2.4_(Build_15)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -123,16 +123,21 @@ ZENDC_SetupMqttConnection(int $InstanzID);
 ZENDC_GetConnectionInfo(int $InstanzID);
 ```
 
+`ZENDC_GetDevices` ist nur für den Konfigurator gedacht (liefert die Geräteliste als JSON) und nicht für eigene Skripte.
+
 ## Hinweise
 
 - Die Cloud-Anbindung nutzt dieselbe Schnittstelle wie die offizielle Zendure-Integration für Home Assistant. Zendure kann diese jederzeit ändern.
 - Ob der Hub `outputLimit` direkt übernimmt, hängt vom eingestellten Modus in der App ab. Greift das Limit nicht, `ZEND_SetDischargePower` verwenden.
 - Häufiges Schreiben (z. B. sekündliche Nulleinspeisungs-Regelung) möglichst vermeiden.
+- Ist die Zendure-Cloud beim Abruf der Geräteliste nicht erreichbar, versucht es das Modul nach 5 Minuten erneut (danach in wachsenden Abständen bis zum eingestellten Intervall). Eine bestehende MQTT-Verbindung läuft in der Zeit normal weiter.
+- Nach einem Akkutausch übernimmt der neue Akku die Nummer des alten, sobald dieser zwei Tage nicht mehr gemeldet wurde (höchstens Akku 1 bis 6).
 
 ## Changelog
 
 | Version | Build | Datum | Beschreibung |
 |---|---|---|---|
+| 2.4 | 15 | 07.10.2026 | Behoben: Scheiterte der Cloud-Abruf beim Start (z. B. Internet noch nicht da), kam der nächste Versuch erst nach 12 Stunden – jetzt nach 5 Minuten mit wachsender Wartezeit; Netz- und Serverfehler (auch HTTP 5xx/429) gelten nicht mehr als ungültiger Cloud-Key und legen bei vorhandenen Zugangsdaten die Geräte nicht mehr still; „Übernehmen“ blockiert nicht mehr bis zu 30 s; Kachel: Wechselrichter-Werte in kW bzw. Wh werden auch bei Variablen mit Darstellung (statt Profil) richtig umgerechnet; Akkunummern wachsen nach einem Akkutausch nicht mehr über Akku 6 hinaus; `imagedestroy` (ab PHP 8.5 veraltet) entfernt |
 | 2.3 | 14 | 06.10.2026 | Hausstil: Regel für die Modulliste (`vendor` gesetzt, höchstens ein Alias) in `STYLEGUIDE.md` und Strukturprüfung ergänzt; Modulliste: Zendure Cloud und Zendure SolarFlow Hub erscheinen nur noch einmal statt zusätzlich unter „Zendure Konto“, „Zendure Hub 1200“ und „Zendure Hub 2000“ |
 | 2.3 | 13 | 06.10.2026 | Behoben: Befehle an das Gerät (MQTT) wurden seit dem Umstieg auf `IPSModuleStrict` UTF-8-kodiert an den MQTT Client übergeben – Symcon erwartet bei `IPSModuleStrict` HEX. Senden jetzt HEX-kodiert, Empfang HEX mit Rückfall auf Klartext |
 | 2.3 | 12 | 06.10.2026 | Sicherheit: MQTT-Passwort wird bei „Zugangsdaten anzeigen“ nicht mehr im Klartext gezeigt; Cloud-Abruf nur noch über HTTPS mit ausdrücklicher Zertifikatsprüfung; interne Bildfunktion nicht mehr als Befehl `ZEND_scaleImage` sichtbar. Geschwindigkeit: Variablen werden nur noch bei geänderten Werten geschrieben; Animationen der Kachel pausieren, solange sie nicht sichtbar ist. Kachelwerte werden ohne `innerHTML` gesetzt |
