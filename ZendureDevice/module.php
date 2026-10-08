@@ -76,15 +76,13 @@ class ZendureSolarFlowHub extends IPSModuleStrict
 
         $this->RegisterAttributeString('Packs', '[]');
         $this->RegisterAttributeString('PacksSeen', '{}');   // Seriennummer => Datum der letzten Meldung
-        $this->RegisterAttributeInteger('MessageId', 0);
         $this->RegisterAttributeString('WatchedVariables', '[]');
-        $this->RegisterAttributeInteger('EnergyLastTs', 0);
         $this->RegisterAttributeString('EnergyDay', '');
 
         // Eigene Kachel (HTML-SDK)
         $this->SetVisualizationType(1);
 
-        $this->RegisterTimer('Poll', 0, 'ZEND_RequestUpdate($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('Poll', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Poll\', 0);');
         // Gateway: "Zendure Cloud" (Cloud-Betrieb) oder direkt ein MQTT Server/Client (lokaler Betrieb)
     }
 
@@ -249,6 +247,9 @@ class ZendureSolarFlowHub extends IPSModuleStrict
     public function RequestAction(string $Ident, mixed $Value): void
     {
         switch ($Ident) {
+            case 'Poll':
+                $this->PollIfSilent();
+                return;
             case 'outputLimit':
                 $this->SetOutputLimit((int) $Value);
                 break;
@@ -322,7 +323,11 @@ class ZendureSolarFlowHub extends IPSModuleStrict
 
     private function HandleReport(array $json): void
     {
-        $this->SetValue('LastUpdate', time());
+        $now = time();
+        $this->SetBuffer('LastReport', (string) $now);
+        if ($now - (int) $this->GetValue('LastUpdate') >= 60) {
+            $this->SetValue('LastUpdate', $now); // Variable höchstens einmal pro Minute schreiben
+        }
         if (!$this->GetValue('Online')) {
             $this->SetValue('Online', true);
         }
@@ -468,21 +473,27 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         $now = time();
         $today = date('Y-m-d', $now);
         if ($this->ReadAttributeString('EnergyDay') !== $today) {
-            $this->WriteAttributeString('EnergyDay', $today);
-            $this->SetValue('SolarEnergyToday', 0.0);
-            $this->WriteAttributeInteger('EnergyLastTs', $now);
+            $this->WriteAttributeString('EnergyDay', $today); // einmal am Tag
+            $this->SetBuffer('EnergyAcc', '0');
+            $this->SetIfChanged('SolarEnergyToday', 0.0);
+            $this->SetBuffer('EnergyLastTs', (string) $now);
             return;
         }
-        $last = $this->ReadAttributeInteger('EnergyLastTs');
-        $this->WriteAttributeInteger('EnergyLastTs', $now);
+        $last = (int) $this->GetBuffer('EnergyLastTs');
+        $this->SetBuffer('EnergyLastTs', (string) $now);
         if ($last <= 0 || $now <= $last || !$this->GetValue('Online')) {
             return;
         }
         $dt = min($now - $last, 600); // Lücken (z. B. offline) nicht hochrechnen
         $power = $this->ValueOrZero('solarInputPower');
-        if ($power > 0) {
-            $this->SetValue('SolarEnergyToday', round($this->GetValue('SolarEnergyToday') + $power * $dt / 3600000, 4));
+        if ($power <= 0) {
+            return;
         }
+        // Genaue Summe im Speicher, Variable nur in 1-Wh-Schritten schreiben
+        $acc = $this->GetBuffer('EnergyAcc');
+        $kwh = ($acc !== '' ? (float) $acc : (float) $this->GetValue('SolarEnergyToday')) + $power * $dt / 3600000;
+        $this->SetBuffer('EnergyAcc', (string) $kwh);
+        $this->SetIfChanged('SolarEnergyToday', round($kwh, 3));
     }
 
     /** Schreibt eine Variable nur, wenn sich der Wert geändert hat (weniger Last und Archivdaten). */
@@ -493,9 +504,32 @@ class ZendureSolarFlowHub extends IPSModuleStrict
         }
     }
 
+    /**
+     * Timer: Der Hub meldet Änderungen selbst. Nur wenn er seit einem Intervall still war,
+     * werden alle Werte angefordert – das spart Nachrichten an Hub und Zendure-Cloud.
+     */
+    private function PollIfSilent(): void
+    {
+        $this->CheckOnline();
+        $this->AccumulateEnergy();
+        $interval = max(10, $this->ReadPropertyInteger('UpdateInterval'));
+        if (time() - $this->LastReport() >= $interval) {
+            $this->Publish('properties/read', ['properties' => ['getAll']]);
+        } else {
+            $this->SendDebug('Poll', 'Hub hat sich selbst gemeldet – keine Abfrage nötig', 0);
+        }
+    }
+
+    /** Zeitpunkt der letzten Meldung (im Speicher, nach Neustart aus der Variable). */
+    private function LastReport(): int
+    {
+        $buf = $this->GetBuffer('LastReport');
+        return $buf !== '' ? (int) $buf : (int) $this->GetValue('LastUpdate');
+    }
+
     private function CheckOnline(): void
     {
-        $last = $this->GetValue('LastUpdate');
+        $last = $this->LastReport();
         $timeout = max(10, $this->ReadPropertyInteger('UpdateInterval')) * 3 + 30;
         $online = $last > 0 && (time() - $last) <= $timeout;
         if ($this->GetValue('Online') !== $online) {
@@ -680,7 +714,13 @@ class ZendureSolarFlowHub extends IPSModuleStrict
 
     private function UpdateTile(): void
     {
-        $this->UpdateVisualizationValue((string) json_encode($this->BuildTileState()));
+        $data = (string) json_encode($this->BuildTileState());
+        $hash = md5($data);
+        if ($this->GetBuffer('TileHash') === $hash) {
+            return; // nichts geändert – offene Visualisierungen nicht unnötig beschicken
+        }
+        $this->SetBuffer('TileHash', $hash);
+        $this->UpdateVisualizationValue($data);
     }
 
     private function BuildTileState(): array
@@ -846,11 +886,8 @@ class ZendureSolarFlowHub extends IPSModuleStrict
             return false;
         }
 
-        $messageId = $this->ReadAttributeInteger('MessageId') + 1;
-        if ($messageId > 999999) {
-            $messageId = 1;
-        }
-        $this->WriteAttributeInteger('MessageId', $messageId);
+        $messageId = ((int) $this->GetBuffer('MessageId') % 999999) + 1;
+        $this->SetBuffer('MessageId', (string) $messageId); // im Speicher, nicht in den Einstellungen
 
         $message['messageId'] = $messageId;
         $message['deviceId'] = $deviceKey;
