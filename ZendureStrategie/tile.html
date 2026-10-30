@@ -3,10 +3,12 @@
     Copyright (c) 2026 Armin Frohwerk · MIT-Lizenz (siehe LICENSE)
     SPDX-License-Identifier: MIT
 
-    Aufbau: Betriebsart, Ladezustand mit Ziel-Entladegrenze, Kennzahlen (Prognose, Nachladung, Ausgang, Akku)
-    und Balken der stündlichen PV-Prognose für die nächsten 36 Stunden; bei großer Kachel die Begründung.
-    Sicherheit: alle Texte per textContent, Diagramm per DOM (kein innerHTML), keine externen Dateien.
-    Gestaltung nach STYLEGUIDE.md (Kachel-Grundlage, Farbschema über applyTheme).
+    Aufbau im Stil der Hub-Kachel: Aurora-Hintergrund (Farbwolken in der Farbe der Betriebsart, Tag/Nacht),
+    Ladezustandsring mit markierter Reserve, Glas-Karten (Betriebsart, Prognose, Nachladung, Ausgang, Akku)
+    und stündliche PV-Prognose der nächsten 36 Stunden; bei großer Kachel die Begründung.
+    Hintergrund „Keiner“ übernimmt das Farbschema der Kachel.
+    Sicherheit: alle Texte per textContent, Grafiken per DOM (kein innerHTML), keine externen Dateien.
+    Animationen pausieren, solange die Kachel nicht sichtbar ist.
 -->
 <style>
     /* ===== Hausstil cfaf2002 · Kachel-Grundlage v1 (siehe STYLEGUIDE.md) =====
@@ -35,95 +37,199 @@
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
+    /* ===== Ende Kachel-Grundlage ===== */
 
-    /* ===== Speicherstrategie ===== */
-    :root { --zs-sun: #f5b83d; --zs-mode: var(--off); }
-    html, body { margin: 0; height: 100%; overflow: hidden; }
-    .zs { box-sizing: border-box; height: 100%; padding: 34px 12px 10px; display: flex; flex-direction: column; gap: 10px; container-type: size; }
-    .zs * { box-sizing: border-box; }
-
-    .head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--pill);
-        background: color-mix(in srgb, var(--zs-mode) 18%, transparent); color: var(--fg); font-size: 13px; font-weight: 600;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--zs-mode); flex: none; }
-    .head .spacer { flex: 1; }
-    .off-note { font-size: 12px; color: var(--muted); white-space: nowrap; }
-
-    .gauge { display: flex; flex-direction: column; gap: 6px; }
-    .gauge-top { display: flex; align-items: baseline; gap: 8px; }
-    .big { font-size: 30px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-    .big small { font-size: 16px; font-weight: 600; color: var(--muted); }
-    .gauge-label { font-size: 12px; color: var(--muted); }
-    .bar { position: relative; height: 12px; border-radius: var(--pill); background: var(--surface); overflow: hidden; }
-    .bar .reserve { position: absolute; left: 0; top: 0; bottom: 0; background: repeating-linear-gradient(135deg,
-        color-mix(in srgb, var(--warn) 35%, transparent) 0 4px, transparent 4px 8px); }
-    .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--pill); background: var(--accent); transition: width .6s; }
-    .bar .mark { position: absolute; top: -2px; bottom: -2px; width: 3px; border-radius: 2px; background: var(--fg); }
-    .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); }
-
-    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
-    .stat { background: var(--surface); border-radius: var(--radius-s); padding: 7px 8px; min-width: 0; }
-    .stat .k { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stat .v { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .stat .v small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 2px; }
-
-    .chart { flex: 1 1 0; min-height: 50px; display: flex; flex-direction: column; gap: 4px; }
-    .plot { flex: 1 1 0; min-height: 30px; position: relative; }
-    .chart-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
-    .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: hidden; }
-    .chart .night { fill: var(--surface); }
-    .chart .pv { fill: var(--zs-sun); }
-    .chart .base { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
-    .chart .now { stroke: var(--accent); stroke-width: 2; }
-    .chart text { fill: var(--faint); font-size: 10px; font-family: var(--font); }
-
-    .reason { font-size: 12px; line-height: 1.4; color: var(--muted); display: none; flex: none; }
-
-    @container (min-height: 360px) { .reason { display: block; } }
-    @container (max-width: 330px) {
-        .stat { padding: 6px; }
-        .stat .v { font-size: 14px; }
-        .big { font-size: 26px; }
+    /* Farben wie die Hub-Kachel; auf Aurora immer helle Schrift */
+    :root {
+        --pv: #ffc94a;
+        --bat: #4fe3b4;
+        --bat2: #22b8cf;
+        --res: #e2a63b;
+        --txt: #eef1f6;
+        --mut: rgba(178, 186, 200, .95);
+        --card: rgba(20, 24, 32, .42);
+        --card-b: rgba(190, 200, 215, .14);
+        --track: rgba(170, 180, 195, .18);
+        --night: rgba(120, 130, 170, .10);
+        --mode: #8796a5;
     }
-    @container (max-width: 250px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @container (max-height: 230px) { .chart { display: none; } }
-    @container (max-height: 160px) { .stats { display: none; } }
+    /* Hintergrund „Keiner“: Farben aus dem Farbschema der Kachel */
+    body.theme {
+        --txt: var(--fg);
+        --mut: var(--muted);
+        --card: var(--surface);
+        --card-b: var(--line);
+        --track: var(--surface-hover);
+        --night: var(--surface);
+        --bat: var(--accent);
+        --bat2: var(--accent);
+    }
+    body.theme .glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: transparent; overflow: hidden; }
+    body { color: var(--txt); font-size: clamp(10px, 2.6vmin, 15px); }
+    .hidden { display: none !important; }
+
+    /* ---------- Aurora ---------- */
+    #bgAurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+        background: radial-gradient(120% 90% at 0% 0%, #1a2233 0%, #0d1119 55%, #080b11 100%); transition: background 1.5s;
+        --c1: #ffb547; --c2: #2fe0b0; --c3: #4f8dff; }
+    #bgAurora.night { background: radial-gradient(120% 90% at 0% 0%, #161631 0%, #0b0b1c 55%, #06060f 100%); }
+    .blob { position: absolute; border-radius: 50%; filter: blur(48px); opacity: .5; transition: opacity 1.6s ease;
+        will-change: transform; mix-blend-mode: screen; }
+    .b1 { width: 62vmax; height: 62vmax; left: -18vmax; top: -24vmax; background: radial-gradient(circle, var(--c1) 0%, transparent 65%); animation: drift1 26s ease-in-out infinite alternate; }
+    .b2 { width: 58vmax; height: 58vmax; left: -14vmax; bottom: -30vmax; background: radial-gradient(circle, var(--c2) 0%, transparent 65%); animation: drift2 31s ease-in-out infinite alternate; }
+    .b3 { width: 66vmax; height: 66vmax; right: -26vmax; top: 6vmax; background: radial-gradient(circle, var(--c3) 0%, transparent 65%); animation: drift3 37s ease-in-out infinite alternate; }
+    .b4 { width: 50vmax; height: 50vmax; right: 6vmax; top: -30vmax; background: radial-gradient(circle, #9b6bff 0%, transparent 65%); opacity: .3; animation: drift2 43s ease-in-out infinite alternate-reverse; }
+    #bgAurora.night .blob { opacity: .32; }
+    @keyframes drift1 { to { transform: translate(8vmax, 6vmax) scale(1.12); } }
+    @keyframes drift2 { to { transform: translate(10vmax, -6vmax) scale(.92); } }
+    @keyframes drift3 { to { transform: translate(-9vmax, 5vmax) scale(1.08); } }
+    .grid { position: absolute; inset: 0; opacity: .5;
+        background-image: radial-gradient(rgba(255,255,255,.12) 1px, transparent 1.2px); background-size: 18px 18px;
+        -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%, #000 70%, transparent 100%);
+        mask-image: linear-gradient(180deg, transparent 0%, #000 45%, #000 70%, transparent 100%); }
+    #stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: .5; animation: tw 4s ease-in-out infinite; }
+    @keyframes tw { 50% { opacity: .1; } }
+    #bgAurora:not(.night) #stars { opacity: 0; }
+    .noise { position: absolute; inset: 0; opacity: .06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+    /* ---------- Aufbau ---------- */
+    /* Platz für Titel und Vergrößern-Symbol, die Symcon über die Kachel legt */
+    .app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; gap: clamp(6px, 1.8vmin, 12px);
+        padding: clamp(34px, 10vh, 62px) clamp(8px, 2.5vw, 18px) clamp(8px, 2.5vh, 16px); container-type: size; }
+    .top { display: flex; gap: clamp(8px, 2.4vmin, 18px); align-items: center; min-height: 0; }
+    .glass { background: var(--card); border: 1px solid var(--card-b); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+
+    /* Ladezustandsring */
+    .ring { position: relative; flex: none; width: clamp(96px, 30vmin, 170px); aspect-ratio: 1; }
+    .ring svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+    .ring .trk { fill: none; stroke: var(--track); stroke-width: 9; }
+    /* innerer Ring: Reserve bis zur Entladegrenze */
+    .ring .rsvTrk { fill: none; stroke: var(--track); stroke-width: 3; opacity: .6; }
+    .ring .rsv { fill: none; stroke: var(--res); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0 999; transition: stroke-dasharray .8s ease; }
+    .ring .soc { fill: none; stroke: url(#gSoc); stroke-width: 9; stroke-linecap: round; stroke-dasharray: 0 999; transition: stroke-dasharray .8s ease;
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--bat) 55%, transparent)); }
+    .ring .mrk { stroke: var(--txt); stroke-width: 3; stroke-linecap: round; transition: transform .8s ease; transform-origin: 50px 50px; }
+    .ring .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.05; }
+    .ring .pct { font-size: clamp(20px, 7vmin, 38px); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .ring .pct small { font-size: .5em; font-weight: 600; color: var(--mut); margin-left: .05em; }
+    .ring .sub { font-size: .72em; color: var(--mut); text-transform: uppercase; letter-spacing: .07em; margin-top: .25em; }
+    .ring .lim { font-size: .78em; font-weight: 600; color: var(--res); margin-top: .35em; white-space: nowrap; }
+
+    /* Karten */
+    .stats { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(5px, 1.4vmin, 9px); align-content: center; }
+    .pill { grid-column: 1 / -1; display: flex; align-items: center; gap: .55em; padding: .5em .9em; border-radius: var(--pill);
+        font-weight: 600; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--mode); }
+    .pill span:last-child { overflow: hidden; text-overflow: ellipsis; }
+    .dot { width: .6em; height: .6em; border-radius: 50%; background: var(--mode); flex: none; animation: pulse 2.4s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mode) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 .6em transparent; } }
+    .card { border-radius: clamp(10px, 2vmin, 14px); padding: clamp(6px, 1.6vmin, 11px) clamp(8px, 2vmin, 13px); min-width: 0;
+        display: flex; flex-direction: column; gap: .25em; }
+    .soccard { display: none; }
+    .k { font-size: .76em; color: var(--mut); text-transform: uppercase; letter-spacing: .07em; display: flex; align-items: center; gap: .45em; white-space: nowrap; overflow: hidden; }
+    .k svg { width: 1.15em; height: 1.15em; flex: none; }
+    .v { font-size: 1.35em; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .v small { font-size: .62em; font-weight: 600; color: var(--mut); margin-left: .18em; }
+    .bar { height: .38em; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: .2em; }
+    .bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #ff9d3d, var(--pv)); transition: width .8s ease; }
+
+    /* Prognose */
+    .chart { flex: 1 1 0; min-height: 70px; border-radius: clamp(10px, 2vmin, 14px); padding: clamp(6px, 1.6vmin, 11px) clamp(8px, 2vmin, 13px);
+        display: flex; flex-direction: column; gap: .35em; }
+    .chart .k { justify-content: space-between; }
+    .chart .k b { font-weight: 600; letter-spacing: .02em; text-transform: none; }
+    .plot { flex: 1 1 0; min-height: 30px; position: relative; }
+    .plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: hidden; }
+    .plot .night { fill: var(--night); }
+    .plot .pvb { fill: url(#gPv); }
+    .plot .base { stroke: var(--mut); stroke-width: 1; stroke-dasharray: 3 3; opacity: .7; }
+    .plot .now { stroke: var(--bat); stroke-width: 2; }
+    .plot .nowDot { fill: var(--bat); }
+    .plot text { fill: var(--mut); font-size: 10px; font-family: var(--font); }
+
+    .reason { flex: none; border-radius: clamp(10px, 2vmin, 14px); padding: clamp(6px, 1.6vmin, 10px) clamp(8px, 2vmin, 13px);
+        font-size: .82em; line-height: 1.45; color: var(--mut); display: none; }
+
+    /* Größen */
+    @container (min-height: 380px) { .reason { display: block; } }
+    @container (max-height: 260px) { .chart { display: none; } .ring { width: clamp(90px, 42vmin, 150px); } }
+    @container (max-height: 150px) { .stats .card { display: none; } }
+    @container (max-width: 360px) {
+        .top { flex-direction: column; align-items: stretch; }
+        .ring { align-self: center; width: clamp(90px, 34vmin, 130px); }
+    }
+    @container (max-width: 360px) and (max-height: 420px) { .ring { display: none; } .stats .soccard { display: flex; } }
+
+    /* Unsichtbare Kachel: alle Animationen anhalten */
+    html.paused *, html.paused *::before, html.paused *::after { animation-play-state: paused !important; }
 </style>
 
-<div class="zs">
-    <div class="head">
-        <span class="chip"><span class="dot"></span><span id="mode">–</span></span>
-        <span class="spacer"></span>
-        <span class="off-note" id="offNote"></span>
-    </div>
+<div id="bgAurora" class="hidden">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="blob b4"></div>
+    <div class="grid"></div>
+    <div id="stars"></div>
+    <div class="noise"></div>
+</div>
 
-    <div class="gauge">
-        <div class="gauge-top">
-            <span class="big" id="soc">–</span>
-            <span class="gauge-label" id="socLabel">Ladezustand</span>
+<div class="app">
+    <div class="top">
+        <div class="ring" aria-hidden="true">
+            <svg viewBox="0 0 100 100">
+                <defs>
+                    <linearGradient id="gSoc" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" style="stop-color: var(--bat2)"/><stop offset="1" style="stop-color: var(--bat)"/>
+                    </linearGradient>
+                </defs>
+                <circle class="trk" cx="50" cy="50" r="42"/>
+                <circle class="rsvTrk" cx="50" cy="50" r="34"/>
+                <circle class="rsv" id="ringRes" cx="50" cy="50" r="34"/>
+                <circle class="soc" id="ringSoc" cx="50" cy="50" r="42"/>
+                <line class="mrk" id="ringMark" x1="81" y1="50" x2="97.5" y2="50"/>
+            </svg>
+            <div class="mid">
+                <div class="pct" id="soc">–</div>
+                <div class="sub" id="cap">Akku</div>
+                <div class="lim" id="lim">Grenze –</div>
+            </div>
         </div>
-        <div class="bar" aria-hidden="true">
-            <div class="reserve" id="reserve"></div>
-            <div class="fill" id="fill"></div>
-            <div class="mark" id="mark"></div>
+        <div class="stats">
+            <div class="pill glass" id="pill"><span class="dot"></span><span id="mode">–</span></div>
+            <div class="card glass soccard">
+                <div class="k">Akku</div>
+                <div class="v" id="socSmall">–</div>
+            </div>
+            <div class="card glass">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span id="dayLabel">PV morgen</span></div>
+                <div class="v" id="day">–</div>
+            </div>
+            <div class="card glass">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2M8 12h5M10.5 9.5v5"/></svg>Nachladung</div>
+                <div class="v" id="refill">–</div>
+                <div class="bar"><i id="refillBar"></i></div>
+            </div>
+            <div class="card glass">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Ausgang</div>
+                <div class="v" id="out">–</div>
+            </div>
+            <div class="card glass">
+                <div class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/></svg>Akku-Temp.</div>
+                <div class="v" id="temp">–</div>
+            </div>
         </div>
-        <div class="scale"><span>0 %</span><span id="targetText">Entladegrenze –</span><span>100 %</span></div>
     </div>
 
-    <div class="stats">
-        <div class="stat"><div class="k" id="dayLabel">PV morgen</div><div class="v" id="day">–</div></div>
-        <div class="stat"><div class="k">Nachladung</div><div class="v" id="refill">–</div></div>
-        <div class="stat"><div class="k">Ausgang</div><div class="v" id="out">–</div></div>
-        <div class="stat"><div class="k">Akku</div><div class="v" id="temp">–</div></div>
-    </div>
-
-    <div class="chart">
-        <div class="chart-head"><span>PV-Prognose am Hub (36 h)</span><span id="peak"></span></div>
+    <div class="chart glass">
+        <div class="k"><span>PV-Prognose am Hub · 36 h</span><b id="peak"></b></div>
         <div class="plot"><svg id="svg" role="img" aria-label="PV-Prognose"></svg></div>
     </div>
 
-    <div class="reason" id="reason"></div>
+    <div class="reason glass" id="reason"></div>
 </div>
 
 <script>
@@ -135,23 +241,26 @@ function applyTheme(theme) {
 }
 
 (function () {
+    // Betriebsart: Text, Farbe der Anzeige, Farbwolken der Aurora
     var MODES = {
-        0: ['Automatik aus', 'var(--off)'],
-        1: ['Sonnig – Akku voll nutzen', 'var(--ok)'],
-        2: ['Ausgeglichen', 'var(--info)'],
-        3: ['Sparbetrieb – Reserve halten', 'var(--warn)'],
-        4: ['Frostreserve', 'var(--info)'],
-        5: ['Pausiert', 'var(--off)'],
-        6: ['Keine Prognose', 'var(--bad)'],
-        7: ['Hub fehlt', 'var(--bad)']
+        0: ['Automatik aus', '#8796a5', ['#6b7a8c', '#3d5a73', '#4a5470']],
+        1: ['Sonnig – Akku voll nutzen', '#4fe3b4', ['#ffb547', '#2fe0b0', '#4f8dff']],
+        2: ['Ausgeglichen', '#5aa9ff', ['#ffc94a', '#22b8cf', '#4f8dff']],
+        3: ['Sparbetrieb – Reserve halten', '#f0b24a', ['#e2a63b', '#c46a2f', '#7b5cff']],
+        4: ['Frostreserve', '#8fd3ff', ['#7fd3ff', '#4f8dff', '#b9c8ff']],
+        5: ['Pausiert', '#8796a5', ['#6b7a8c', '#3d5a73', '#4a5470']],
+        6: ['Keine Prognose', '#e5484d', ['#e5484d', '#7b5cff', '#4a5470']],
+        7: ['Hub fehlt', '#e5484d', ['#e5484d', '#7b5cff', '#4a5470']]
     };
-    var SVG = 'http://www.w3.org/2000/svg';
+    var NS = 'http://www.w3.org/2000/svg';
+    var CIRC = 2 * Math.PI * 42;
 
     function has(v) { return v !== null && v !== undefined && !isNaN(v); }
     function num(v, d) { return Number(v).toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d }); }
-    function text(id, t) { var n = document.getElementById(id); if (n) n.textContent = t; }
+    function byId(id) { return document.getElementById(id); }
+    function text(id, t) { byId(id).textContent = t; }
     function value(id, v, unit) {
-        var n = document.getElementById(id);
+        var n = byId(id);
         n.textContent = '';
         if (v === null) { n.textContent = '–'; return; }
         n.appendChild(document.createTextNode(v));
@@ -160,23 +269,67 @@ function applyTheme(theme) {
         n.appendChild(s);
     }
     function hhmm(ts) { var d = new Date(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
-
     function el(name, attrs, cls) {
-        var n = document.createElementNS(SVG, name);
+        var n = document.createElementNS(NS, name);
         for (var k in attrs) n.setAttribute(k, attrs[k]);
         if (cls) n.setAttribute('class', cls);
         return n;
     }
 
+    // ---------- Hintergrund ----------
+    var bgMode = 'aurora';
+    function stars() {
+        var box = byId('stars');
+        if (box.childNodes.length) return;
+        for (var i = 0; i < 28; i++) {
+            var s = document.createElement('i');
+            s.style.left = ((i * 37.7) % 100) + '%';
+            s.style.top = ((i * 23.3) % 60) + '%';
+            s.style.animationDelay = ((i % 7) * .6) + 's';
+            box.appendChild(s);
+        }
+    }
+    function background(s, night) {
+        bgMode = s.background === 'none' ? 'none' : 'aurora';
+        var a = byId('bgAurora');
+        a.classList.toggle('hidden', bgMode !== 'aurora');
+        a.classList.toggle('night', !!night);
+        document.body.classList.toggle('theme', bgMode === 'none');
+        var c = (MODES[s.mode] || MODES[0])[2];
+        a.style.setProperty('--c1', c[0]);
+        a.style.setProperty('--c2', c[1]);
+        a.style.setProperty('--c3', c[2]);
+        if (night) stars();
+    }
+
+    // ---------- Ring ----------
+    function ring(soc, target) {
+        var s = has(soc) ? Math.max(0, Math.min(100, soc)) : 0;
+        var t = has(target) ? Math.max(0, Math.min(100, target)) : 0;
+        byId('ringSoc').style.strokeDasharray = (CIRC * s / 100) + ' ' + CIRC;
+        var inner = 2 * Math.PI * 34;
+        byId('ringRes').style.strokeDasharray = (inner * t / 100) + ' ' + inner;
+        byId('ringMark').style.transform = 'rotate(' + (t * 3.6) + 'deg)';
+    }
+
+    // ---------- Prognose ----------
     function chart(s) {
-        var svg = document.getElementById('svg');
+        var svg = byId('svg');
         var plot = svg.parentNode;
         while (svg.firstChild) svg.removeChild(svg.firstChild);
         var bars = s.bars || [];
-        if (!bars.length) { text('peak', ''); return; }
+        if (!bars.length || !plot.clientWidth) { text('peak', ''); return; }
         // echte Pixelgröße statt gestrecktem viewBox, damit Schrift und Balken nicht verzerren
-        var W = Math.max(120, Math.round(plot.clientWidth || 360)), H = Math.max(30, Math.round(plot.clientHeight || 80)), top = 4, bottom = 14;
+        var W = Math.max(120, Math.round(plot.clientWidth)), H = Math.max(30, Math.round(plot.clientHeight)), top = 6, bottom = 14;
         svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+        var defs = el('defs', {});
+        var g = el('linearGradient', { id: 'gPv', x1: 0, y1: 0, x2: 0, y2: 1 });
+        g.appendChild(el('stop', { offset: 0, 'stop-color': '#ffd36b' }));
+        g.appendChild(el('stop', { offset: 1, 'stop-color': '#ff9d3d', 'stop-opacity': .55 }));
+        defs.appendChild(g);
+        svg.appendChild(defs);
+
         var t0 = bars[0][0] - 3600, t1 = bars[bars.length - 1][0];
         var span = Math.max(3600, t1 - t0);
         var max = 0;
@@ -186,32 +339,33 @@ function applyTheme(theme) {
         var x = function (t) { return (t - t0) / span * W; };
         var y = function (kw) { return H - bottom - kw / scaleMax * (H - top - bottom); };
 
-        // Nacht schattieren
+        // Nacht: von jedem Sonnenuntergang bis zum nächsten Sonnenaufgang
         var rise = s.rise || [], set = s.set || [];
-        for (var i = 0; i < set.length; i++) {
-            var from = set[i], to = rise[i + 1] || t1;
-            if (i === 0 && rise[0] > t0) svg.appendChild(el('rect', { x: 0, y: 0, width: Math.max(0, x(rise[0])), height: H - bottom }, 'night'));
-            if (to < t0 || from > t1) continue;
-            var a = Math.max(0, x(from)), b = Math.min(W, x(to));
-            if (b > a) svg.appendChild(el('rect', { x: a, y: 0, width: b - a, height: H - bottom }, 'night'));
-        }
+        var nights = [];
+        if (rise[0] && rise[0] > t0) nights.push([t0, rise[0]]);
+        for (var i = 0; i < set.length; i++) nights.push([set[i], rise[i + 1] || t1]);
+        nights.forEach(function (n) {
+            var a = Math.max(0, x(n[0])), b = Math.min(W, x(n[1]));
+            if (b > a) svg.appendChild(el('rect', { x: a, y: 0, width: b - a, height: H - bottom, rx: 4 }, 'night'));
+        });
 
         var bw = W / (span / 3600);
         bars.forEach(function (b) {
             if (b[1] <= 0) return;
-            var xx = x(b[0] - 3600);
-            svg.appendChild(el('rect', { x: xx + 0.5, y: y(b[1]), width: Math.max(1, bw - 1), height: H - bottom - y(b[1]), rx: 1 }, 'pv'));
+            var xx = x(b[0] - 3600), hh = Math.max(1, H - bottom - y(b[1]));
+            svg.appendChild(el('rect', { x: xx + bw * .12, y: H - bottom - hh, width: Math.max(1, bw * .76), height: hh, rx: Math.min(3, bw * .3) }, 'pvb'));
         });
 
         if (base > 0) svg.appendChild(el('line', { x1: 0, x2: W, y1: y(base), y2: y(base) }, 'base'));
 
         var now = Date.now() / 1000;
-        if (now > t0 && now < t1) svg.appendChild(el('line', { x1: x(now), x2: x(now), y1: 0, y2: H - bottom }, 'now'));
+        if (now > t0 && now < t1) {
+            svg.appendChild(el('line', { x1: x(now), x2: x(now), y1: 2, y2: H - bottom }, 'now'));
+            svg.appendChild(el('circle', { cx: x(now), cy: 3, r: 3 }, 'nowDot'));
+        }
 
-        // Beschriftung alle 6 Stunden
         var step = W < 260 ? 43200 : 21600;
-        var start = Math.ceil(t0 / step) * step;
-        for (var t = start; t < t1; t += step) {
+        for (var t = Math.ceil(t0 / step) * step; t < t1; t += step) {
             if (x(t) < 14 || x(t) > W - 14) continue;
             var lbl = el('text', { x: x(t), y: H - 2, 'text-anchor': 'middle' });
             lbl.textContent = hhmm(t);
@@ -220,26 +374,39 @@ function applyTheme(theme) {
         text('peak', 'max. ' + num(max * 1000, 0) + ' W');
     }
 
+    // ---------- Darstellung ----------
     function render(s) {
         var m = MODES[s.mode] || MODES[0];
-        text('mode', m[0]);
-        document.documentElement.style.setProperty('--zs-mode', m[1]);
-        text('offNote', s.active ? '' : 'Automatik aus');
-
-        var soc = has(s.soc) ? Math.max(0, Math.min(100, s.soc)) : null;
-        text('soc', soc === null ? '–' : num(soc, 0) + ' %');
-        text('socLabel', 'Ladezustand' + (has(s.capacity) ? ' · ' + num(s.capacity, 2) + ' kWh' : ''));
-        var target = has(s.hubMin) && s.mode >= 5 ? s.hubMin : s.target;
-        document.getElementById('fill').style.width = (soc || 0) + '%';
-        document.getElementById('reserve').style.width = (target || 0) + '%';
-        document.getElementById('mark').style.left = 'calc(' + (target || 0) + '% - 1px)';
-        text('targetText', 'Entladegrenze ' + (has(target) ? num(target, 0) + ' %' : '–'));
+        text('mode', s.active === false ? 'Automatik aus' : m[0]);
+        document.documentElement.style.setProperty('--mode', m[1]);
 
         var now = Date.now() / 1000;
-        var tomorrow = !(s.rise && s.rise[0] && now < s.rise[0]);
+        var rise = s.rise || [], set = s.set || [];
+        var night = rise.length ? (now < rise[0] || (set[0] && now >= set[0] && (!rise[1] || now < rise[1]))) : false;
+        background(s, night);
+
+        var soc = has(s.soc) ? Math.max(0, Math.min(100, s.soc)) : null;
+        // aktive Strategie: Ziel-Grenze; sonst die, die am Hub gerade eingestellt ist
+        var target = (s.mode >= 1 && s.mode <= 4) ? s.target : (has(s.hubMin) ? s.hubMin : s.target);
+        ring(soc, target);
+        var pct = byId('soc');
+        pct.textContent = '';
+        if (soc === null) { pct.textContent = '–'; } else {
+            pct.appendChild(document.createTextNode(num(soc, 0)));
+            var sm = document.createElement('small');
+            sm.textContent = '%';
+            pct.appendChild(sm);
+        }
+        value('socSmall', soc === null ? null : num(soc, 0), '% · Grenze ' + (has(target) ? num(target, 0) : '–') + ' %');
+        text('cap', has(s.capacity) ? num(s.capacity, 2) + ' kWh' : 'Akku');
+        text('lim', 'Grenze ' + (has(target) ? num(target, 0) + ' %' : '–'));
+
+        var tomorrow = !(rise[0] && now < rise[0]);
         text('dayLabel', tomorrow ? 'PV morgen' : 'PV heute');
-        value('day', has(tomorrow ? s.tomorrow : s.today) ? num(tomorrow ? s.tomorrow : s.today, 1) : null, 'kWh');
+        var day = tomorrow ? s.tomorrow : s.today;
+        value('day', has(day) ? num(day, 1) : null, 'kWh');
         value('refill', has(s.refill) ? num(s.refill, 0) : null, '%');
+        byId('refillBar').style.width = (has(s.refill) ? Math.min(100, s.refill) : 0) + '%';
         value('out', has(s.output) ? num(s.output, 0) : null, 'W');
         value('temp', has(s.temp) ? num(s.temp, 1) : null, '°C');
         text('reason', s.reason || '');
@@ -256,12 +423,14 @@ function applyTheme(theme) {
         } catch (e) { }
     };
 
-    // Jetzt-Linie und „heute/morgen“ einmal pro Minute nachziehen – nur, solange die Kachel sichtbar ist
+    // Jetzt-Linie und Tag/Nacht einmal pro Minute nachziehen; unsichtbar: Animationen und Timer anhalten
     var timer = null;
     function tick() { if (state.mode !== undefined) render(state); }
     function visibility() {
-        if (document.hidden) { if (timer) { clearInterval(timer); timer = null; } }
-        else if (!timer) { timer = setInterval(tick, 60000); }
+        var hidden = document.hidden;
+        document.documentElement.classList.toggle('paused', hidden);
+        if (hidden) { if (timer) { clearInterval(timer); timer = null; } }
+        else if (!timer) { timer = setInterval(tick, 60000); tick(); }
     }
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('resize', tick);

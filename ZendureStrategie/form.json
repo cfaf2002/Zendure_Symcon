@@ -8,7 +8,9 @@
             "type": "SelectInstance",
             "name": "HubInstance",
             "caption": "Zendure SolarFlow Hub",
-            "validModules": ["{EEA9BD1E-4878-4A2D-9165-F23C8A4BA200}"]
+            "validModules": [
+                "{EEA9BD1E-4878-4A2D-9165-F23C8A4BA200}"
+            ]
         },
         {
             "type": "NumberSpinner",
@@ -31,17 +33,59 @@
                 {
                     "type": "RowLayout",
                     "items": [
-                        { "type": "NumberSpinner", "name": "Peak1", "caption": "Fläche 1: Leistung", "suffix": "Wp", "minimum": 0, "maximum": 10000 },
-                        { "type": "NumberSpinner", "name": "Tilt1", "caption": "Neigung", "suffix": "°", "minimum": 0, "maximum": 90 },
-                        { "type": "NumberSpinner", "name": "Azimuth1", "caption": "Ausrichtung", "suffix": "°", "minimum": -180, "maximum": 180 }
+                        {
+                            "type": "NumberSpinner",
+                            "name": "Peak1",
+                            "caption": "Fläche 1: Leistung",
+                            "suffix": "Wp",
+                            "minimum": 0,
+                            "maximum": 10000
+                        },
+                        {
+                            "type": "NumberSpinner",
+                            "name": "Tilt1",
+                            "caption": "Neigung",
+                            "suffix": "°",
+                            "minimum": 0,
+                            "maximum": 90
+                        },
+                        {
+                            "type": "NumberSpinner",
+                            "name": "Azimuth1",
+                            "caption": "Ausrichtung",
+                            "suffix": "°",
+                            "minimum": -180,
+                            "maximum": 180
+                        }
                     ]
                 },
                 {
                     "type": "RowLayout",
                     "items": [
-                        { "type": "NumberSpinner", "name": "Peak2", "caption": "Fläche 2: Leistung (0 = keine)", "suffix": "Wp", "minimum": 0, "maximum": 10000 },
-                        { "type": "NumberSpinner", "name": "Tilt2", "caption": "Neigung", "suffix": "°", "minimum": 0, "maximum": 90 },
-                        { "type": "NumberSpinner", "name": "Azimuth2", "caption": "Ausrichtung", "suffix": "°", "minimum": -180, "maximum": 180 }
+                        {
+                            "type": "NumberSpinner",
+                            "name": "Peak2",
+                            "caption": "Fläche 2: Leistung (0 = keine)",
+                            "suffix": "Wp",
+                            "minimum": 0,
+                            "maximum": 10000
+                        },
+                        {
+                            "type": "NumberSpinner",
+                            "name": "Tilt2",
+                            "caption": "Neigung",
+                            "suffix": "°",
+                            "minimum": 0,
+                            "maximum": 90
+                        },
+                        {
+                            "type": "NumberSpinner",
+                            "name": "Azimuth2",
+                            "caption": "Ausrichtung",
+                            "suffix": "°",
+                            "minimum": -180,
+                            "maximum": 180
+                        }
                     ]
                 },
                 {
@@ -104,8 +148,23 @@
                 {
                     "type": "RowLayout",
                     "items": [
-                        { "type": "NumberSpinner", "name": "FrostTemperature", "caption": "Akkutemperatur unter", "suffix": "°C", "digits": 1, "minimum": -20, "maximum": 15 },
-                        { "type": "NumberSpinner", "name": "FrostMinSoc", "caption": "Entladegrenze mindestens", "suffix": "%", "minimum": 0, "maximum": 50 }
+                        {
+                            "type": "NumberSpinner",
+                            "name": "FrostTemperature",
+                            "caption": "Akkutemperatur unter",
+                            "suffix": "°C",
+                            "digits": 1,
+                            "minimum": -20,
+                            "maximum": 15
+                        },
+                        {
+                            "type": "NumberSpinner",
+                            "name": "FrostMinSoc",
+                            "caption": "Entladegrenze mindestens",
+                            "suffix": "%",
+                            "minimum": 0,
+                            "maximum": 50
+                        }
                     ]
                 }
             ]
@@ -128,8 +187,14 @@
                     "name": "OutputMethod",
                     "caption": "Steuern über",
                     "options": [
-                        { "caption": "Ausgangsleistung (Limit)", "value": 0 },
-                        { "caption": "Entladeleistung vorgeben (Geräteautomatik)", "value": 1 }
+                        {
+                            "caption": "Ausgangsleistung (Limit)",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Entladeleistung vorgeben (Geräteautomatik)",
+                            "value": 1
+                        }
                     ]
                 },
                 {
@@ -156,8 +221,14 @@
                     "name": "ReleaseMode",
                     "caption": "Automatik läuft, wenn die Variable",
                     "options": [
-                        { "caption": "An ist", "value": 0 },
-                        { "caption": "Aus ist", "value": 1 }
+                        {
+                            "caption": "An ist",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Aus ist",
+                            "value": 1
+                        }
                     ]
                 },
                 {
@@ -179,9 +250,33 @@
                     "name": "TileTheme",
                     "caption": "Farbschema der Kachel",
                     "options": [
-                        { "caption": "Symcon-Design (Farben der Visualisierung)", "value": 0 },
-                        { "caption": "Dunkel", "value": 1 },
-                        { "caption": "Hell", "value": 2 }
+                        {
+                            "caption": "Symcon-Design (Farben der Visualisierung)",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Dunkel",
+                            "value": 1
+                        },
+                        {
+                            "caption": "Hell",
+                            "value": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "Select",
+                    "name": "TileBackground",
+                    "caption": "Hintergrund",
+                    "options": [
+                        {
+                            "caption": "Aurora (wie die Hub-Kachel)",
+                            "value": "aurora"
+                        },
+                        {
+                            "caption": "Keiner (Farben des Farbschemas)",
+                            "value": "none"
+                        }
                     ]
                 }
             ]
@@ -195,8 +290,20 @@
         }
     ],
     "status": [
-        { "code": 102, "icon": "active", "caption": "Aktiv" },
-        { "code": 104, "icon": "inactive", "caption": "Bitte einen Zendure SolarFlow Hub wählen" },
-        { "code": 201, "icon": "error", "caption": "Bitte die Leistung der Solarmodule am Hub eintragen" }
+        {
+            "code": 102,
+            "icon": "active",
+            "caption": "Aktiv"
+        },
+        {
+            "code": 104,
+            "icon": "inactive",
+            "caption": "Bitte einen Zendure SolarFlow Hub wählen"
+        },
+        {
+            "code": 201,
+            "icon": "error",
+            "caption": "Bitte die Leistung der Solarmodule am Hub eintragen"
+        }
     ]
 }

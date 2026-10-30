@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 2.5 (Build 16)](https://img.shields.io/badge/Modul--Version-2.5_(Build_16)-informational.svg)](library.json)
+[![Modul-Version 2.7 (Build 18)](https://img.shields.io/badge/Modul--Version-2.7_(Build_18)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -12,8 +12,9 @@
 ![Sprache: Deutsch](https://img.shields.io/badge/Sprache-Deutsch-blueviolet.svg)
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green.svg)](LICENSE)
 [![Zendure](https://img.shields.io/badge/Zendure-SolarFlow%20Hub%201200%20%7C%202000-2FBF71)](https://zendure.de)
+[![PV-Prognose: Open-Meteo](https://img.shields.io/badge/PV--Prognose-Open--Meteo-lightgrey.svg)](https://open-meteo.com)
 
-Modul zum Auslesen und Steuern von **Zendure SolarFlow Hub 1200 / Hub 2000** in IP-Symcon – wahlweise über die **Zendure-Cloud** oder einen **lokalen MQTT-Broker**.
+Modul zum Auslesen und Steuern von **Zendure SolarFlow Hub 1200 / Hub 2000** in IP-Symcon – wahlweise über die **Zendure-Cloud** oder einen **lokalen MQTT-Broker**. Dazu eine **wettergeführte Speicherstrategie**, die die Entladegrenze nach der PV-Prognose des nächsten Tages setzt.
 
 Autor: Armin Frohwerk
 
@@ -26,6 +27,7 @@ Autor: Armin Frohwerk
 | Zendure Cloud | Splitter | `ZENDC` | Holt mit dem Cloud-Key Geräteliste und MQTT-Zugangsdaten, richtet den MQTT-Client ein |
 | Zendure Configurator | Konfigurator | `ZENDK` | Listet die Geräte des Kontos und legt Geräteinstanzen an |
 | Zendure SolarFlow Hub | Gerät | `ZEND` | Werte, Akkus, Steuerung |
+| Zendure Speicherstrategie | Logik | `ZENDS` | Entladegrenze und Ausgangsleistung nach PV-Prognose, Frostreserve |
 
 ## Voraussetzungen
 
@@ -97,6 +99,24 @@ Große Bilder werden automatisch verkleinert, damit die Kachel nicht zu groß wi
 
 Für die direkt angeschlossenen Module können bis zu zwei Eingänge gewählt werden (z. B. „PV 1 Leistung“ und „PV 3 Leistung“, wenn der Hub an PV 2 und PV 4 hängt). Sie werden addiert, und die Kachel zeigt dann auch den Wirkungsgrad. Ohne diese Variablen wird der Wert aus AC-Leistung und Hub-Ausgang geschätzt. Werte in kW bzw. Wh werden automatisch umgerechnet.
 
+## Speicherstrategie (wettergeführt)
+
+Die Instanz **Zendure Speicherstrategie** steuert den Hub nach der Sonne, die kommt:
+
+1. Stündlich holt sie bei **Open-Meteo** die Einstrahlung auf die geneigte Modulfläche (bis zu zwei Flächen mit eigener Neigung und Ausrichtung) und rechnet sie mit Modulleistung und Systemwirkungsgrad in Watt um.
+2. Für den **nächsten Sonnentag** (vor Sonnenaufgang heute, danach morgen) zählt nur der Überschuss über der Grundlast – das ist die Energie, die wirklich in den Akku geht. Im Verhältnis zur Akkukapazität (Anzahl Akkus × Kapazität je Akku) ergibt das die **Nachladung**.
+3. Daraus die **Entladegrenze**: Nachladung ≥ 100 % → „Entladegrenze, wenn der Akku sicher wieder voll wird“ (Standard 10 %), ≤ 25 % → „Entladegrenze bei wenig Sonne“ (Standard 30 %), dazwischen stufenlos in 5-%-Schritten.
+4. **Frostreserve:** Liegt die Akkutemperatur unter der Schwelle (Standard 3 °C), bleibt mindestens die Frost-Entladegrenze (Standard 40 %) im Akku – Reserve für die Akkuheizung und Schutz vor Tiefentladung bei Dauerfrost.
+5. **Ausgangsleistung (optional, standardmäßig aus):** tagsüber Grundlast, nachts so verteilt, dass die nutzbare Energie über der Entladegrenze bis eine Stunde nach Sonnenaufgang reicht (zwischen „Nachts mindestens“ und Grundlast). Wahlweise über „Ausgangsleistung (Limit)“ oder „Entladeleistung vorgeben“. Nicht einschalten, wenn schon ein anderes Skript die Ausgangsleistung regelt.
+
+Gesendet wird nur bei Abweichung (Ausgangsleistung erst ab 20 W Unterschied) und derselbe Wert höchstens alle 10 Minuten. Ist die Prognose älter als 6 Stunden, der Hub ohne Ladezustand, die Automatik aus oder die **Freigabe-Variable** (z. B. ein zentraler Automatik- oder Urlaubsschalter, wählbar „läuft bei An“ oder „läuft bei Aus“) nicht erteilt, bleibt am Hub alles, wie es ist.
+
+**Einrichtung:** Instanz anlegen, Hub wählen, Kapazität je Akku (AB2000 1,92 kWh, AB1000 0,96 kWh), Leistung, Neigung und Ausrichtung der Module am Hub (0° = Süd, −90° = Ost, 90° = West) und die Grundlast eintragen. Standort kommt aus der Standort-Instanz von Symcon oder wird selbst gewählt.
+
+**Variablen:** Automatik (Schalter), Betriebsart, Begründung (Klartext, warum welche Grenze), PV-Prognose Hub heute/morgen, Nachladung nächster Sonnentag, Ziel-Entladegrenze, Ziel-Ausgangsleistung, Prognose vom.
+
+**Kachel:** im Stil der Hub-Kachel – Aurora-Hintergrund, dessen Farbwolken die Betriebsart zeigen (gold/grün bei Sonne, bernstein/violett im Sparbetrieb, eisblau bei Frostreserve; nachts dunkler mit Sternen), Ladezustandsring mit innerem Reserve-Ring bis zur Entladegrenze, Glas-Karten für Betriebsart, PV-Prognose, Nachladung, Ausgang und Akkutemperatur sowie die stündliche PV-Prognose der nächsten 36 Stunden mit Nachtbereich, Jetzt-Linie und Grundlast; bei großer Kachel zusätzlich die Begründung. Hintergrund „Keiner“ übernimmt das Farbschema (Symcon-Design, Dunkel, Hell). Animationen pausieren, solange die Kachel nicht sichtbar ist.
+
 ## Symcon 8/9
 
 - Alle Module nutzen `IPSModuleStrict` mit typisierten Funktionen.
@@ -118,6 +138,10 @@ ZEND_SetBuzzer(int $InstanzID, bool $An);
 ZEND_SetInputLimit(int $InstanzID, int $Watt);
 ZEND_WriteProperty(int $InstanzID, string $Name, int $Wert);
 
+ZENDS_Update(int $InstanzID);                       // Prognose holen und auswerten
+ZENDS_Evaluate(int $InstanzID);                     // mit vorhandener Prognose auswerten
+ZENDS_GetForecast(int $InstanzID);                  // stündliche PV-Prognose (kW) als JSON
+
 ZENDC_RefreshDevices(int $InstanzID);
 ZENDC_SetupMqttConnection(int $InstanzID);
 ZENDC_GetConnectionInfo(int $InstanzID);
@@ -138,6 +162,8 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 
 | Version | Build | Datum | Beschreibung |
 |---|---|---|---|
+| 2.7 | 18 | 30.10.2026 | Speicherstrategie: Kachel im Stil der Hub-Kachel neu gestaltet (Aurora-Hintergrund in der Farbe der Betriebsart, Ladezustandsring mit Reserve-Ring, Glas-Karten, Prognose mit Verlaufsbalken); neue Einstellung „Hintergrund“ (Aurora oder Keiner); Prognoseabruf blockiert „Übernehmen“ nicht mehr |
+| 2.6 | 17 | 30.10.2026 | Neu: Modul **Zendure Speicherstrategie** – Entladegrenze nach PV-Prognose (Open-Meteo, geneigte Fläche) des nächsten Sonnentags, Frostreserve bei kaltem Akku, optional nächtliche Verteilung der Ausgangsleistung bis Sonnenaufgang, Freigabe-Variable, eigene Kachel; Funktionstests (`tests/run.php`). Behoben: Konfigurator ließ sich mit `IPSModuleStrict` nicht anlegen (`ConnectParent` gibt es dort nicht mehr; Verbindung läuft über `parentRequirements`) |
 | 2.5 | 16 | 08.10.2026 | Weniger Zugriffe: Der Timer fragt den Hub nur noch ab, wenn er sich seit einem Intervall nicht selbst gemeldet hat (vorher jede Minute `getAll`, auch bei laufenden Meldungen); Nachrichtennummer und Zeitpunkt für den Tagesertrag liegen im Speicher statt in den Einstellungen (keine Schreibvorgänge in die Einstellungsdatei bei jeder Meldung mehr); „Letzte Meldung“ höchstens einmal pro Minute, „Solarertrag Hub heute“ in 1-Wh-Schritten geschrieben; Kachel wird nur bei geänderten Daten aktualisiert |
 | 2.4 | 15 | 07.10.2026 | Behoben: Scheiterte der Cloud-Abruf beim Start (z. B. Internet noch nicht da), kam der nächste Versuch erst nach 12 Stunden – jetzt nach 5 Minuten mit wachsender Wartezeit; Netz- und Serverfehler (auch HTTP 5xx/429) gelten nicht mehr als ungültiger Cloud-Key und legen bei vorhandenen Zugangsdaten die Geräte nicht mehr still; „Übernehmen“ blockiert nicht mehr bis zu 30 s; Kachel: Wechselrichter-Werte in kW bzw. Wh werden auch bei Variablen mit Darstellung (statt Profil) richtig umgerechnet; Akkunummern wachsen nach einem Akkutausch nicht mehr über Akku 6 hinaus; `imagedestroy` (ab PHP 8.5 veraltet) entfernt |
 | 2.3 | 14 | 06.10.2026 | Hausstil: Regel für die Modulliste (`vendor` gesetzt, höchstens ein Alias) in `STYLEGUIDE.md` und Strukturprüfung ergänzt; Modulliste: Zendure Cloud und Zendure SolarFlow Hub erscheinen nur noch einmal statt zusätzlich unter „Zendure Konto“, „Zendure Hub 1200“ und „Zendure Hub 2000“ |

@@ -18,7 +18,10 @@ class ZendureConfigurator extends IPSModuleStrict
     public function Create(): void
     {
         parent::Create();
-        $this->ConnectParent(self::CLOUD_GUID);
+        // IPSModuleStrict verbindet über parentRequirements selbst; ConnectParent gibt es dort nicht mehr
+        if (method_exists($this, 'ConnectParent')) {
+            $this->ConnectParent(self::CLOUD_GUID);
+        }
     }
 
     public function ApplyChanges(): void

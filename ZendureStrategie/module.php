@@ -75,6 +75,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
 
         // Kachel
         $this->RegisterPropertyInteger('TileTheme', 0);           // 0 = Symcon-Design, 1 = Dunkel, 2 = Hell
+        $this->RegisterPropertyString('TileBackground', 'aurora'); // aurora | none
 
         $this->RegisterAttributeString('WatchedVariables', '[]');
         $this->RegisterAttributeBoolean('Initialized', false);
@@ -649,6 +650,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
         $hubMin = $this->HubValue('minSoc');
         return [
             'theme'    => $this->ReadPropertyInteger('TileTheme'),
+            'background' => $this->ReadPropertyString('TileBackground') === 'none' ? 'none' : 'aurora',
             'active'   => (bool) $this->GetValue('Active'),
             'mode'     => (int) $this->GetValue('Mode'),
             'reason'   => (string) $this->GetValue('Reason'),
