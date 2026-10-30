@@ -84,6 +84,9 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
         $this->RegisterTimer('Forecast', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Forecast\', 0);');
 
         $this->RegisterMessage(0, IPS_KERNELSTARTED);
+
+        // Eigene Kachel in der Kachel-Visualisierung (HTML-SDK)
+        $this->SetVisualizationType(1);
     }
 
     public function ApplyChanges(): void
@@ -92,7 +95,8 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
 
         $this->RegisterVariableBoolean('Active', 'Automatik', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH, 'ICON' => 'wand-magic-sparkles'], 0);
         $this->EnableAction('Active');
-        $this->RegisterVariableInteger('Mode', 'Betriebsart', $this->Presentation('mode'), 1);
+        // MaintainVariable statt RegisterVariable…, damit auch bestehende Variablen die aktuelle Darstellung bekommen
+        $this->MaintainVariable('Mode', 'Betriebsart', VARIABLETYPE_INTEGER, $this->Presentation('mode'), 1, true);
         $this->RegisterVariableString('Reason', 'Begründung', $this->Presentation('text'), 2);
         $this->RegisterVariableFloat('ForecastToday', 'PV-Prognose Hub heute', $this->Presentation('kwh'), 10);
         $this->RegisterVariableFloat('ForecastTomorrow', 'PV-Prognose Hub morgen', $this->Presentation('kwh'), 11);
@@ -342,8 +346,9 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
     }
 
     /**
-     * Energie, die am Tag $day voraussichtlich in den Akku geht: je Stunde PV-Leistung minus Grundlast
-     * (die geht zuerst ans Haus), nur Überschuss zählt.
+     * Energie, die am Tag $day voraussichtlich in den Akku geht. Regelt das Modul die Ausgangsleistung
+     * (tagsüber Grundlast), geht die Grundlast zuerst ans Haus und nur der Überschuss zählt; sonst entscheidet
+     * der Hub selbst und die ganze PV-Prognose gilt als Ladeenergie.
      */
     private function Chargeable(array $forecast, int $day): float
     {
@@ -352,7 +357,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
         if ($rise <= 0 || $set <= $rise) {
             return 0.0;
         }
-        $base = max(0, $this->ReadPropertyInteger('BaseLoad')) / 1000;
+        $base = $this->ReadPropertyBoolean('ControlOutput') ? max(0, $this->ReadPropertyInteger('BaseLoad')) / 1000 : 0.0;
         $sum = 0.0;
         foreach ($forecast['hours'] ?? [] as $ts => $kw) {
             $ts = (int) $ts;
@@ -719,8 +724,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
                 ];
                 $list = [];
                 foreach ($options as [$v, $caption, $icon, $color]) {
-                    $list[] = ['Value' => $v, 'Caption' => $caption, 'IconActive' => true, 'IconValue' => $icon,
-                        'ColorActive' => true, 'ColorValue' => $color, 'Color' => $color];
+                    $list[] = ['Value' => $v, 'Caption' => $caption, 'IconActive' => true, 'IconValue' => $icon, 'Color' => $color];
                 }
                 return ['PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION, 'ICON' => 'wand-magic-sparkles', 'OPTIONS' => (string) json_encode($list)];
         }

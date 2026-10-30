@@ -138,12 +138,12 @@ ok($plan['mode'] === 1 && $plan['minSoc'] === 10, 'viel Sonne morgen → Sonnig,
 ok($plan['output'] === null, 'Ausgangsleistung unangetastet, solange nicht eingeschaltet');
 
 // Trüber Tag morgen
-$fc = forecast($now, 20, [0.3, 0.2, 0.3]);
+$fc = forecast($now, 20, [0.3, 0.12, 0.3]);
 $plan = call($s, 'Plan', [$fc, $now, 80.0, 12.0, 3.84]);
 ok($plan['mode'] === 3 && $plan['minSoc'] === 30, 'wenig Sonne morgen → Sparbetrieb, Entladegrenze 30 %');
 
 // Dazwischen
-$fc = forecast($now, 20, [0.6, 0.62, 0.6]);
+$fc = forecast($now, 20, [0.6, 0.4, 0.6]);
 $plan = call($s, 'Plan', [$fc, $now, 80.0, 12.0, 3.84]);
 ok($plan['mode'] === 2 && $plan['minSoc'] > 10 && $plan['minSoc'] < 30 && $plan['minSoc'] % 5 === 0,
     'mittlere Prognose → Ausgeglichen, Grenze dazwischen in 5-%-Schritten (' . $plan['minSoc'] . ' %)');
@@ -161,6 +161,9 @@ ok($plan['mode'] === 4 && $plan['minSoc'] === 40, 'kalter Akku → Frostreserve 
 // Nachtverteilung der Ausgangsleistung
 IPS_SetProperty($id, 'ControlOutput', true);
 IPS_ApplyChanges($id);
+$fc = forecast($now, 20, [0.6, 0.4, 0.6]);
+$plan = call($s, 'Plan', [$fc, $now, 80.0, 12.0, 3.84]);
+ok($plan['refill'] > 1.0 && $plan['refill'] < 1.5, 'mit Steuerung der Ausgangsleistung geht die Grundlast zuerst ans Haus (' . $plan['refill'] . ' kWh)');
 $fc = forecast($now, 20, [0.3, 0.2, 0.3]);
 $plan = call($s, 'Plan', [$fc, $now, 60.0, 12.0, 3.84]);
 // nutzbar (60 − 30) % von 3,84 = 1,152 kWh über 13 h (bis 9 Uhr) ≈ 89 W → Mindestwert 100 W
