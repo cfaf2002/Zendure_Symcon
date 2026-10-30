@@ -73,12 +73,20 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
 
         $this->RegisterPropertyInteger('EvaluateInterval', 5);    // min
 
+        // Prognose-Check: täglicher Vergleich Prognose ↔ Ertrag des Hubs
+        $this->RegisterPropertyInteger('CheckMode', 1);           // 0 = aus, 1 = Hinweis, 2 = automatisch korrigieren
+        $this->RegisterPropertyInteger('NotifyInstance', 0);      // Kachel-Visualisierung für Push-Hinweise (optional)
+
         // Kachel
         $this->RegisterPropertyInteger('TileTheme', 0);           // 0 = Symcon-Design, 1 = Dunkel, 2 = Hell
         $this->RegisterPropertyString('TileBackground', 'aurora'); // aurora | none
 
         $this->RegisterAttributeString('WatchedVariables', '[]');
         $this->RegisterAttributeBoolean('Initialized', false);
+        $this->RegisterAttributeString('CheckHistory', '[]');     // [{d, f (kWh bei 100 % Wirkungsgrad), a (kWh Ertrag)}]
+        $this->RegisterAttributeString('CheckPending', '{}');     // {done, date, f} – Prognose für morgen, wie die Strategie sie nutzt
+        $this->RegisterAttributeFloat('Correction', 1.0);         // gelernter Korrekturfaktor (nur bei „automatisch korrigieren“)
+        $this->RegisterAttributeString('CheckNotified', '{}');    // {pr, time} – zuletzt gemeldete Empfehlung
 
         $this->RegisterTimer('Evaluate', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Evaluate\', 0);');
         $this->RegisterTimer('Forecast', 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'Forecast\', 0);');
@@ -104,6 +112,12 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
         $this->RegisterVariableInteger('TargetMinSoc', 'Ziel-Entladegrenze', $this->Presentation('soc'), 20);
         $this->RegisterVariableInteger('TargetOutput', 'Ziel-Ausgangsleistung', $this->Presentation('watt'), 21);
         $this->RegisterVariableInteger('ForecastTime', 'Prognose vom', $this->Presentation('datetime'), 30);
+        $check = $this->ReadPropertyInteger('CheckMode') > 0;
+        $this->MaintainVariable('CheckDeviation', 'Prognose-Abweichung (14 Tage)', VARIABLETYPE_INTEGER, $this->Presentation('deviation'), 40, $check);
+        $this->MaintainVariable('CheckHint', 'Prognose-Check', VARIABLETYPE_STRING, $this->Presentation('check'), 41, $check);
+        if ($check && $this->GetValue('CheckHint') === '') {
+            $this->CheckEvaluate(json_decode($this->ReadAttributeString('CheckHistory'), true) ?: []);
+        }
 
         // Neue Instanz: Automatik einschalten (danach entscheidet der Nutzer)
         if (!$this->ReadAttributeBoolean('Initialized')) {
@@ -190,7 +204,20 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
     /** Wertet mit der vorhandenen Prognose aus und schreibt bei Bedarf Entladegrenze und Ausgangsleistung zum Hub. */
     public function Evaluate(): bool
     {
+        $this->CheckRun(time());
         return (bool) $this->EvaluateRun(time());
+    }
+
+    /** Prognose-Check zurücksetzen (z. B. nach Umbau der Module). */
+    public function ResetCheck(): void
+    {
+        $this->WriteAttributeString('CheckHistory', '[]');
+        $this->WriteAttributeString('CheckPending', '{}');
+        $this->WriteAttributeString('CheckNotified', '{}');
+        $this->WriteAttributeFloat('Correction', 1.0);
+        $this->CheckEvaluate([]);
+        $this->SetBuffer('Forecast', '');
+        $this->SetTimerInterval('Forecast', 1000);
     }
 
     /** Stündliche PV-Prognose des Hubs als JSON (Zeitpunkt => kW), dazu Sonnenauf- und -untergänge. */
@@ -214,6 +241,10 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
             case 'Forecast':
                 $this->SetTimerInterval('Forecast', 3600 * 1000);
                 $this->Update();
+                return;
+            case 'ResetCheck':
+                $this->ResetCheck();
+                echo 'Prognose-Check zurückgesetzt.';
                 return;
             case 'Refresh':
                 $this->Update();
@@ -384,6 +415,148 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
     }
 
     // ---------------------------------------------------------------------
+    // Prognose-Check
+    // ---------------------------------------------------------------------
+
+    /**
+     * Eine Stunde nach Sonnenuntergang: Prognose des Tages (so, wie die Strategie sie am Vorabend genutzt hat)
+     * mit dem Ertrag des Hubs vergleichen und in den Verlauf schreiben. Läuft auch bei ausgeschalteter Automatik.
+     */
+    private function CheckRun(int $now): void
+    {
+        if ($this->ReadPropertyInteger('CheckMode') === 0) {
+            return;
+        }
+        $forecast = json_decode($this->GetBuffer('Forecast'), true);
+        if (!is_array($forecast) || !isset($forecast['sunset'][0], $forecast['sunset'][1]) || $now < (int) $forecast['sunset'][0] + 3600) {
+            return;
+        }
+        $today = date('Y-m-d', $now);
+        $pending = json_decode($this->ReadAttributeString('CheckPending'), true) ?: [];
+        if (($pending['done'] ?? '') === $today) {
+            return;
+        }
+        $factor = max(0.01, (float) ($forecast['factor'] ?? 1.0));
+
+        // Prognose auf 100 % Wirkungsgrad zurückrechnen – so bleibt der Verlauf gültig, wenn sich der Wirkungsgrad ändert
+        $potential = ($pending['date'] ?? '') === $today ? (float) $pending['f'] : $this->DayTotal($forecast, 0) / $factor;
+        $actual = $this->HubValue('SolarEnergyToday');
+
+        $history = json_decode($this->ReadAttributeString('CheckHistory'), true) ?: [];
+        // Kein Ertrag trotz Sonne (Schnee auf den Modulen, Hub offline …) verfälscht den Vergleich – Tag auslassen
+        $expected = $potential * $factor;
+        if ($actual !== null && !($expected >= 0.3 && $actual < $expected * 0.1)) {
+            $history[] = ['d' => $today, 'f' => round($potential, 3), 'a' => round($actual, 2)];
+            $history = array_slice($history, -14);
+            $this->WriteAttributeString('CheckHistory', (string) json_encode($history));
+        }
+        $this->WriteAttributeString('CheckPending', (string) json_encode([
+            'done' => $today,
+            'date' => date('Y-m-d', (int) $forecast['sunset'][1]),
+            'f'    => round($this->DayTotal($forecast, 1) / $factor, 3),
+        ]));
+        $this->CheckEvaluate($history);
+    }
+
+    /** Wertet den Verlauf aus: Abweichung, Hinweis und ggf. neuer Korrekturfaktor. */
+    private function CheckEvaluate(array $history): void
+    {
+        $mode = $this->ReadPropertyInteger('CheckMode');
+        if ($mode === 0) {
+            return;
+        }
+        $result = $this->CheckResult($history, $this->ReadPropertyInteger('PerformanceRatio'));
+        $this->SetValueIfChanged('CheckDeviation', $result['deviation']);
+
+        if ($result['days'] < 5) {
+            $this->SetValueIfChanged('CheckHint', sprintf('Prognose-Check sammelt noch Daten (%d von 5 Tagen mit Sonne).', $result['days']));
+            return;
+        }
+        $base = sprintf('Letzte %d Tage: Ertrag %s kWh, Prognose %s kWh (%+d %%).',
+            $result['days'], $this->Num($result['actual'], 1), $this->Num($result['forecast'], 1), $result['deviation']);
+
+        if ($mode === 2) {
+            $correction = max(0.5, min(1.5, round($result['ratio'] * $this->Correction(), 2)));
+            if (abs($correction - $this->Correction()) >= 0.01) {
+                $this->WriteAttributeFloat('Correction', $correction);
+            }
+            $this->SetValueIfChanged('CheckHint', $base . sprintf(' Automatisch korrigiert: Prognose × %s.', $this->Num($correction, 2)));
+            return;
+        }
+
+        if (abs($result['deviation']) <= 10) {
+            $this->SetValueIfChanged('CheckHint', $base . ' Die Prognose passt.');
+            return;
+        }
+        $pr = $this->ReadPropertyInteger('PerformanceRatio');
+        $hint = $base . sprintf(' Empfehlung: Systemwirkungsgrad von %d %% auf %d %% ändern.', $pr, $result['suggested']);
+        $this->SetValueIfChanged('CheckHint', $hint);
+        $this->Notify($result['suggested'], $hint);
+    }
+
+    /**
+     * Rechnet aus dem Verlauf (nur Tage mit nennenswerter Prognose) Abweichung und passenden Wirkungsgrad.
+     *
+     * @return array{days:int,actual:float,forecast:float,ratio:float,deviation:int,suggested:int}
+     */
+    private function CheckResult(array $history, int $pr): array
+    {
+        $pr = max(10, min(100, $pr));
+        $factor = $pr / 100 * $this->Correction();
+        $sumA = 0.0;
+        $sumP = 0.0;
+        $days = 0;
+        foreach ($history as $day) {
+            $f = (float) ($day['f'] ?? 0) * $factor;
+            if ($f < 0.3) {
+                continue;   // trübe Tage sagen wenig über den Wirkungsgrad
+            }
+            $sumA += (float) ($day['a'] ?? 0);
+            $sumP += (float) ($day['f'] ?? 0);
+            $days++;
+        }
+        $forecast = $sumP * $factor;
+        $ratio = $forecast > 0 ? $sumA / $forecast : 1.0;
+        return [
+            'days'      => $days,
+            'actual'    => round($sumA, 2),
+            'forecast'  => round($forecast, 2),
+            'ratio'     => $ratio,
+            'deviation' => $days > 0 ? (int) round(($sumA / max(0.01, $forecast) - 1) * 100) : 0,
+            'suggested' => $sumP > 0 ? $this->Clamp((int) round($sumA / $sumP * 100), 40, 100) : $pr,
+        ];
+    }
+
+    /** Hinweis ins Meldungsfenster und optional als Push über die Kachel-Visualisierung – höchstens alle 3 Tage. */
+    private function Notify(int $suggested, string $text): void
+    {
+        // Erst melden, dann nur wieder, wenn sich die Empfehlung um mindestens 3 Punkte ändert (frühestens nach 3 Tagen)
+        $last = json_decode($this->ReadAttributeString('CheckNotified'), true) ?: [];
+        if (isset($last['pr'])) {
+            $changed = abs((int) $last['pr'] - $suggested) >= 3;
+            $waited = (time() - (int) ($last['time'] ?? 0)) >= 3 * 86400;
+            if (!$changed || !$waited) {
+                return;
+            }
+        }
+        $this->WriteAttributeString('CheckNotified', (string) json_encode(['pr' => $suggested, 'time' => time()]));
+        $this->LogMessage('Zendure Speicherstrategie: ' . $text, KL_NOTIFY);
+        $visu = $this->ReadPropertyInteger('NotifyInstance');
+        if ($visu > 0 && @IPS_InstanceExists($visu) && function_exists('VISU_PostNotification')) {
+            try {
+                VISU_PostNotification($visu, 'Speicherstrategie', $text, 'Information', $this->InstanceID);
+            } catch (Throwable $e) {
+                $this->SendDebug('Hinweis', $e->getMessage(), 0);
+            }
+        }
+    }
+
+    private function Correction(): float
+    {
+        return $this->ReadPropertyInteger('CheckMode') === 2 ? max(0.5, min(1.5, $this->ReadAttributeFloat('Correction'))) : 1.0;
+    }
+
+    // ---------------------------------------------------------------------
     // Prognose
     // ---------------------------------------------------------------------
 
@@ -394,7 +567,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
             $this->SendDebug('Prognose', 'kein Standort (Standort-Instanz von Symcon oder eigener Standort)', 0);
             return false;
         }
-        $ratio = max(10, min(100, $this->ReadPropertyInteger('PerformanceRatio'))) / 100;
+        $ratio = max(10, min(100, $this->ReadPropertyInteger('PerformanceRatio'))) / 100 * $this->Correction();
         $hours = [];
         $rise = [];
         $set = [];
@@ -424,7 +597,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
             return false;
         }
         ksort($hours);
-        $data = ['time' => time(), 'sunrise' => $rise, 'sunset' => $set, 'hours' => $hours];
+        $data = ['time' => time(), 'sunrise' => $rise, 'sunset' => $set, 'hours' => $hours, 'factor' => $ratio];
         $this->SetBuffer('Forecast', (string) json_encode($data));
 
         $this->SetValueIfChanged('ForecastToday', $this->DayTotal($data, 0));
@@ -659,6 +832,7 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
             'active'   => (bool) $this->GetValue('Active'),
             'mode'     => (int) $this->GetValue('Mode'),
             'reason'   => (string) $this->GetValue('Reason'),
+            'hint'     => $this->ReadPropertyInteger('CheckMode') === 1 ? $this->CheckWarning() : '',
             'today'    => (float) $this->GetValue('ForecastToday'),
             'tomorrow' => (float) $this->GetValue('ForecastTomorrow'),
             'refill'   => (int) $this->GetValue('Refill'),
@@ -673,6 +847,17 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
             'rise'     => is_array($forecast) ? array_map('intval', $forecast['sunrise'] ?? []) : [],
             'set'      => is_array($forecast) ? array_map('intval', $forecast['sunset'] ?? []) : [],
         ];
+    }
+
+    /** Empfehlung des Prognose-Checks für die Kachel (leer, wenn die Prognose passt). */
+    private function CheckWarning(): string
+    {
+        $id = @IPS_GetObjectIDByIdent('CheckHint', $this->InstanceID);
+        if ($id === false || $id === 0) {
+            return '';
+        }
+        $text = (string) GetValue($id);
+        return str_contains($text, 'Empfehlung:') ? $text : '';
     }
 
     // ---------------------------------------------------------------------
@@ -706,6 +891,8 @@ class ZendureSpeicherstrategie extends IPSModuleStrict
             case 'soc':    return $value(' %', 'battery-quarter');
             case 'refill': return $value(' %', 'battery-bolt');
             case 'watt':   return $value(' W', 'gauge');
+            case 'deviation': return $value(' %', 'scale-balanced');
+            case 'check':  return ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION, 'MULTILINE' => true, 'ICON' => 'clipboard-check'];
             case 'text':   return ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION, 'MULTILINE' => true, 'ICON' => 'circle-info'];
             case 'datetime':
                 return defined('VARIABLE_PRESENTATION_DATE_TIME')

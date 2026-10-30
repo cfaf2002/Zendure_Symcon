@@ -150,6 +150,11 @@
     .plot .nowDot { fill: var(--bat); }
     .plot text { fill: var(--mut); font-size: 10px; font-family: var(--font); }
 
+    .hint { flex: none; display: none; align-items: flex-start; gap: .6em; border-radius: clamp(10px, 2vmin, 14px);
+        padding: clamp(6px, 1.6vmin, 10px) clamp(8px, 2vmin, 13px); font-size: .82em; line-height: 1.45;
+        border-color: color-mix(in srgb, var(--res) 45%, transparent) !important; }
+    .hint.on { display: flex; }
+    .hint svg { width: 1.3em; height: 1.3em; flex: none; color: var(--res); margin-top: .1em; }
     .reason { flex: none; border-radius: clamp(10px, 2vmin, 14px); padding: clamp(6px, 1.6vmin, 10px) clamp(8px, 2vmin, 13px);
         font-size: .82em; line-height: 1.45; color: var(--mut); display: none; }
 
@@ -157,6 +162,7 @@
     @container (min-height: 380px) { .reason { display: block; } }
     @container (max-height: 260px) { .chart { display: none; } .ring { width: clamp(90px, 42vmin, 150px); } }
     @container (max-height: 150px) { .stats .card { display: none; } }
+    @container (max-height: 300px) { .hint.on { display: none; } }
     @container (max-width: 360px) {
         .top { flex-direction: column; align-items: stretch; }
         .ring { align-self: center; width: clamp(90px, 34vmin, 130px); }
@@ -229,6 +235,10 @@
         <div class="plot"><svg id="svg" role="img" aria-label="PV-Prognose"></svg></div>
     </div>
 
+    <div class="hint glass" id="hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span id="hintText"></span>
+    </div>
     <div class="reason glass" id="reason"></div>
 </div>
 
@@ -410,6 +420,8 @@ function applyTheme(theme) {
         value('out', has(s.output) ? num(s.output, 0) : null, 'W');
         value('temp', has(s.temp) ? num(s.temp, 1) : null, '°C');
         text('reason', s.reason || '');
+        text('hintText', s.hint || '');
+        byId('hint').classList.toggle('on', !!s.hint);
         chart(s);
     }
 

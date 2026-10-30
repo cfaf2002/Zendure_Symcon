@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 2.7 (Build 19)](https://img.shields.io/badge/Modul--Version-2.7_(Build_19)-informational.svg)](library.json)
+[![Modul-Version 2.8 (Build 20)](https://img.shields.io/badge/Modul--Version-2.8_(Build_20)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -109,6 +109,13 @@ Die Instanz **Zendure Speicherstrategie** steuert den Hub nach der Sonne, die ko
 4. **Frostreserve:** Liegt die Akkutemperatur unter der Schwelle (Standard 3 °C), bleibt mindestens die Frost-Entladegrenze (Standard 40 %) im Akku – Reserve für die Akkuheizung und Schutz vor Tiefentladung bei Dauerfrost.
 5. **Ausgangsleistung (optional, standardmäßig aus):** tagsüber Grundlast, nachts so verteilt, dass die nutzbare Energie über der Entladegrenze bis eine Stunde nach Sonnenaufgang reicht (zwischen „Nachts mindestens“ und Grundlast). Wahlweise über „Ausgangsleistung (Limit)“ oder „Entladeleistung vorgeben“. Nicht einschalten, wenn schon ein anderes Skript die Ausgangsleistung regelt.
 
+**Prognose-Check:** Jeden Abend (eine Stunde nach Sonnenuntergang) vergleicht die Instanz die Prognose des Tages – so, wie die Strategie sie am Vorabend genutzt hat – mit dem „Solarertrag Hub heute“ des Hubs. Ab 5 sonnigen Tagen wertet sie die letzten 14 Tage aus (Variablen „Prognose-Abweichung (14 Tage)“ und „Prognose-Check“). Einstellbar unter „Prognose-Check“:
+
+- **Hinweis** (Standard): Weicht die Prognose um mehr als 10 % ab, steht im „Prognose-Check“ und in der Kachel eine Empfehlung für den Systemwirkungsgrad (z. B. „von 85 % auf 68 % ändern“); zusätzlich ein Eintrag im Meldungsfenster und – wenn eine Kachel-Visualisierung gewählt ist – ein Push-Hinweis. Erneut gemeldet wird nur, wenn sich die Empfehlung um mindestens 3 Punkte ändert, frühestens nach 3 Tagen.
+- **Automatisch korrigieren:** Die Instanz lernt selbst einen Korrekturfaktor (0,5–1,5) und rechnet ihn in die Prognose ein.
+
+Trübe Tage (Prognose unter 0,3 kWh) zählen nicht mit, Tage ohne Ertrag trotz Sonne (Schnee auf den Modulen, Hub offline) werden ausgelassen. Der Verlauf wird auf 100 % Wirkungsgrad zurückgerechnet gespeichert und bleibt daher gültig, wenn du den Wirkungsgrad änderst. Nach einem Umbau der Module: Button „Prognose-Check zurücksetzen“ oder `ZENDS_ResetCheck`.
+
 Gesendet wird nur bei Abweichung (Ausgangsleistung erst ab 20 W Unterschied) und derselbe Wert höchstens alle 10 Minuten. Ist die Prognose älter als 6 Stunden, der Hub ohne Ladezustand, die Automatik aus oder die **Freigabe-Variable** (z. B. ein zentraler Automatik- oder Urlaubsschalter, wählbar „läuft bei An“ oder „läuft bei Aus“) nicht erteilt, bleibt am Hub alles, wie es ist.
 
 **Einrichtung:** Instanz anlegen, Hub wählen, Kapazität je Akku (AB2000 1,92 kWh, AB1000 0,96 kWh), Leistung, Neigung und Ausrichtung der Module am Hub (0° = Süd, −90° = Ost, 90° = West) und die Grundlast eintragen. Standort kommt aus der Standort-Instanz von Symcon oder wird selbst gewählt.
@@ -141,6 +148,7 @@ ZEND_WriteProperty(int $InstanzID, string $Name, int $Wert);
 ZENDS_Update(int $InstanzID);                       // Prognose holen und auswerten
 ZENDS_Evaluate(int $InstanzID);                     // mit vorhandener Prognose auswerten
 ZENDS_GetForecast(int $InstanzID);                  // stündliche PV-Prognose (kW) als JSON
+ZENDS_ResetCheck(int $InstanzID);                   // Verlauf des Prognose-Checks löschen
 
 ZENDC_RefreshDevices(int $InstanzID);
 ZENDC_SetupMqttConnection(int $InstanzID);
@@ -162,6 +170,7 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 
 | Version | Build | Datum | Beschreibung |
 |---|---|---|---|
+| 2.8 | 20 | 30.10.2026 | Speicherstrategie: **Prognose-Check** – vergleicht jeden Abend die Prognose mit dem Ertrag des Hubs, wertet die letzten 14 Tage aus und gibt bei mehr als 10 % Abweichung eine Empfehlung für den Systemwirkungsgrad (Variable, Kachel, Meldungsfenster, optional Push über die Kachel-Visualisierung) oder korrigiert die Prognose auf Wunsch automatisch; Button und Befehl `ZENDS_ResetCheck` |
 | 2.7 | 19 | 30.10.2026 | Speicherstrategie behoben: eigene Kachel wurde in der Visualisierung nicht angezeigt (Visualisierungstyp fehlte); „Betriebsart“ zeigte eine Zahl statt Text; ohne Steuerung der Ausgangsleistung zieht die Nachladung die Grundlast nicht mehr ab (der Hub lädt dann selbst, wie er will) |
 | 2.7 | 18 | 30.10.2026 | Speicherstrategie: Kachel im Stil der Hub-Kachel neu gestaltet (Aurora-Hintergrund in der Farbe der Betriebsart, Ladezustandsring mit Reserve-Ring, Glas-Karten, Prognose mit Verlaufsbalken); neue Einstellung „Hintergrund“ (Aurora oder Keiner); Prognoseabruf blockiert „Übernehmen“ nicht mehr |
 | 2.6 | 17 | 30.10.2026 | Neu: Modul **Zendure Speicherstrategie** – Entladegrenze nach PV-Prognose (Open-Meteo, geneigte Fläche) des nächsten Sonnentags, Frostreserve bei kaltem Akku, optional nächtliche Verteilung der Ausgangsleistung bis Sonnenaufgang, Freigabe-Variable, eigene Kachel; Funktionstests (`tests/run.php`). Behoben: Konfigurator ließ sich mit `IPSModuleStrict` nicht anlegen (`ConnectParent` gibt es dort nicht mehr; Verbindung läuft über `parentRequirements`) |

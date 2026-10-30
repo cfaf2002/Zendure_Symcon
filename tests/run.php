@@ -213,6 +213,37 @@ call($s, 'SetBuffer', ['Forecast', (string) json_encode($old)]);
 $s->Evaluate();
 ok(GetValue(IPS_GetObjectIDByIdent('Mode', $id)) === 6, 'Prognose älter als 6 h → nichts ändern');
 
+// Prognose-Check: sechs Abende, Ertrag jeweils 20 % unter der Prognose
+$base = time() - 10 * 86400;
+for ($i = 0; $i < 6; $i++) {
+    $day = $base + $i * 86400;
+    $fc = forecast($day, 20, [0.4, 0.4, 0.4]);
+    $fc['factor'] = 0.85;
+    call($s, 'SetBuffer', ['Forecast', (string) json_encode($fc)]);
+    hubVar($hub, 'SolarEnergyToday', 2, round(call($s, 'DayTotal', [$fc, 0]) * 0.8, 2));
+    call($s, 'CheckRun', [$day]);
+    call($s, 'CheckRun', [$day + 60]);   // zweiter Aufruf am selben Abend zählt nicht doppelt
+}
+$history = json_decode((string) call($s, 'ReadAttributeString', ['CheckHistory']), true);
+ok(count($history) === 6, 'Prognose-Check: ein Eintrag pro Abend (' . count($history) . ')');
+$dev = GetValue(IPS_GetObjectIDByIdent('CheckDeviation', $id));
+ok($dev === -20, 'Prognose-Check: Abweichung −20 % erkannt (' . $dev . ' %)');
+$hint = (string) GetValue(IPS_GetObjectIDByIdent('CheckHint', $id));
+ok(str_contains($hint, 'von 85 % auf 68 %'), 'Prognose-Check: Empfehlung 85 % → 68 % (' . $hint . ')');
+ok(str_contains($s->GetVisualizationTile(), 'Empfehlung'), 'Prognose-Check: Hinweis erscheint in der Kachel');
+
+IPS_SetProperty($id, 'CheckMode', 2);
+IPS_ApplyChanges($id);
+call($s, 'CheckEvaluate', [$history]);
+$corr = (float) call($s, 'ReadAttributeFloat', ['Correction']);
+ok(abs($corr - 0.8) < 0.011, 'Automatisch korrigieren: Faktor 0,80 gelernt (' . $corr . ')');
+call($s, 'CheckEvaluate', [$history]);
+ok(abs((float) call($s, 'ReadAttributeFloat', ['Correction']) - 0.8) < 0.011, 'Automatisch korrigieren: Faktor bleibt stabil');
+$s->ResetCheck();
+ok((float) call($s, 'ReadAttributeFloat', ['Correction']) === 1.0, 'Prognose-Check zurücksetzen');
+IPS_SetProperty($id, 'CheckMode', 1);
+IPS_ApplyChanges($id);
+
 // Kachel
 $tile = $s->GetVisualizationTile();
 ok(str_contains($tile, 'Kachel-Grundlage') && !str_contains($tile, '__INITIAL_STATE__'), 'Kachel mit Startdaten');

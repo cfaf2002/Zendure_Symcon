@@ -209,6 +209,40 @@
         },
         {
             "type": "ExpansionPanel",
+            "caption": "Prognose-Check",
+            "items": [
+                {
+                    "type": "Label",
+                    "caption": "Vergleicht jeden Abend (eine Stunde nach Sonnenuntergang) die Prognose des Tages mit dem „Solarertrag Hub heute“. Nach 5 sonnigen Tagen gibt es eine Auswertung über die letzten 14 Tage."
+                },
+                {
+                    "type": "Select",
+                    "name": "CheckMode",
+                    "caption": "Bei Abweichung",
+                    "options": [
+                        {
+                            "caption": "Aus",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Hinweis mit Empfehlung für den Systemwirkungsgrad",
+                            "value": 1
+                        },
+                        {
+                            "caption": "Prognose automatisch korrigieren",
+                            "value": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "SelectInstance",
+                    "name": "NotifyInstance",
+                    "caption": "Push-Hinweis über Kachel-Visualisierung (optional)"
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
             "caption": "Freigabe und Intervall",
             "items": [
                 {
@@ -287,6 +321,11 @@
             "type": "Button",
             "caption": "Prognose holen und jetzt auswerten",
             "onClick": "IPS_RequestAction($id, 'Refresh', 0);"
+        },
+        {
+            "type": "Button",
+            "caption": "Prognose-Check zurücksetzen",
+            "onClick": "IPS_RequestAction($id, 'ResetCheck', 0);"
         }
     ],
     "status": [
