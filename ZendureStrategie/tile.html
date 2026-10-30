@@ -1,0 +1,272 @@
+<!--
+    Kachel für das Modul "Zendure Speicherstrategie" (IP-Symcon HTML-SDK)
+    Copyright (c) 2026 Armin Frohwerk · MIT-Lizenz (siehe LICENSE)
+    SPDX-License-Identifier: MIT
+
+    Aufbau: Betriebsart, Ladezustand mit Ziel-Entladegrenze, Kennzahlen (Prognose, Nachladung, Ausgang, Akku)
+    und Balken der stündlichen PV-Prognose für die nächsten 36 Stunden; bei großer Kachel die Begründung.
+    Sicherheit: alle Texte per textContent, Diagramm per DOM (kein innerHTML), keine externen Dateien.
+    Gestaltung nach STYLEGUIDE.md (Kachel-Grundlage, Farbschema über applyTheme).
+-->
+<style>
+    /* ===== Hausstil cfaf2002 · Kachel-Grundlage v1 (siehe STYLEGUIDE.md) =====
+       Farbschema 0 = Symcon-Design (Farben der Visualisierung), 1 = Dunkel, 2 = Hell.
+       Modulspezifisch ist nur --brand (Akzent der festen Farbschemas). */
+    :root {
+        --brand: #4fe3b4;
+        --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --fg: var(--content-color, #eef3f7);
+        --accent: var(--accent-color, var(--brand));
+        --on-accent: #ffffff;
+        --muted: color-mix(in srgb, var(--fg) 65%, transparent);
+        --faint: color-mix(in srgb, var(--fg) 40%, transparent);
+        --line: color-mix(in srgb, var(--fg) 15%, transparent);
+        --surface: color-mix(in srgb, var(--fg) 7%, transparent);
+        --surface-hover: color-mix(in srgb, var(--fg) 12%, transparent);
+        --popup: var(--card-color, #232a33);
+        --ok: #34b36b; --warn: #e2a63b; --bad: #e5484d; --info: #4b8ef0; --off: #8796a5;
+        --radius-l: 14px; --radius: 12px; --radius-s: 8px; --pill: 999px; --gap: 8px;
+    }
+    html.theme-dark  { --fg: #eef3f7; --accent: var(--brand); --tile-bg: #1b2530; --popup: #232d39; }
+    html.theme-light { --fg: #1d2b36; --accent: var(--brand); --tile-bg: #e9eef3; --popup: #ffffff; }
+    html.theme-dark body, html.theme-light body { background: var(--tile-bg); }
+    html, body { font-family: var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+
+    /* ===== Speicherstrategie ===== */
+    :root { --zs-sun: #f5b83d; --zs-mode: var(--off); }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    .zs { box-sizing: border-box; height: 100%; padding: 34px 12px 10px; display: flex; flex-direction: column; gap: 10px; container-type: size; }
+    .zs * { box-sizing: border-box; }
+
+    .head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--pill);
+        background: color-mix(in srgb, var(--zs-mode) 18%, transparent); color: var(--fg); font-size: 13px; font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--zs-mode); flex: none; }
+    .head .spacer { flex: 1; }
+    .off-note { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+    .gauge { display: flex; flex-direction: column; gap: 6px; }
+    .gauge-top { display: flex; align-items: baseline; gap: 8px; }
+    .big { font-size: 30px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    .big small { font-size: 16px; font-weight: 600; color: var(--muted); }
+    .gauge-label { font-size: 12px; color: var(--muted); }
+    .bar { position: relative; height: 12px; border-radius: var(--pill); background: var(--surface); overflow: hidden; }
+    .bar .reserve { position: absolute; left: 0; top: 0; bottom: 0; background: repeating-linear-gradient(135deg,
+        color-mix(in srgb, var(--warn) 35%, transparent) 0 4px, transparent 4px 8px); }
+    .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--pill); background: var(--accent); transition: width .6s; }
+    .bar .mark { position: absolute; top: -2px; bottom: -2px; width: 3px; border-radius: 2px; background: var(--fg); }
+    .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); }
+
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+    .stat { background: var(--surface); border-radius: var(--radius-s); padding: 7px 8px; min-width: 0; }
+    .stat .k { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat .v { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .stat .v small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+
+    .chart { flex: 1 1 0; min-height: 50px; display: flex; flex-direction: column; gap: 4px; }
+    .plot { flex: 1 1 0; min-height: 30px; position: relative; }
+    .chart-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+    .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: hidden; }
+    .chart .night { fill: var(--surface); }
+    .chart .pv { fill: var(--zs-sun); }
+    .chart .base { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+    .chart .now { stroke: var(--accent); stroke-width: 2; }
+    .chart text { fill: var(--faint); font-size: 10px; font-family: var(--font); }
+
+    .reason { font-size: 12px; line-height: 1.4; color: var(--muted); display: none; flex: none; }
+
+    @container (min-height: 360px) { .reason { display: block; } }
+    @container (max-width: 330px) {
+        .stat { padding: 6px; }
+        .stat .v { font-size: 14px; }
+        .big { font-size: 26px; }
+    }
+    @container (max-width: 250px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @container (max-height: 230px) { .chart { display: none; } }
+    @container (max-height: 160px) { .stats { display: none; } }
+</style>
+
+<div class="zs">
+    <div class="head">
+        <span class="chip"><span class="dot"></span><span id="mode">–</span></span>
+        <span class="spacer"></span>
+        <span class="off-note" id="offNote"></span>
+    </div>
+
+    <div class="gauge">
+        <div class="gauge-top">
+            <span class="big" id="soc">–</span>
+            <span class="gauge-label" id="socLabel">Ladezustand</span>
+        </div>
+        <div class="bar" aria-hidden="true">
+            <div class="reserve" id="reserve"></div>
+            <div class="fill" id="fill"></div>
+            <div class="mark" id="mark"></div>
+        </div>
+        <div class="scale"><span>0 %</span><span id="targetText">Entladegrenze –</span><span>100 %</span></div>
+    </div>
+
+    <div class="stats">
+        <div class="stat"><div class="k" id="dayLabel">PV morgen</div><div class="v" id="day">–</div></div>
+        <div class="stat"><div class="k">Nachladung</div><div class="v" id="refill">–</div></div>
+        <div class="stat"><div class="k">Ausgang</div><div class="v" id="out">–</div></div>
+        <div class="stat"><div class="k">Akku</div><div class="v" id="temp">–</div></div>
+    </div>
+
+    <div class="chart">
+        <div class="chart-head"><span>PV-Prognose am Hub (36 h)</span><span id="peak"></span></div>
+        <div class="plot"><svg id="svg" role="img" aria-label="PV-Prognose"></svg></div>
+    </div>
+
+    <div class="reason" id="reason"></div>
+</div>
+
+<script>
+// Hausstil: Farbschema der Kachel (0 = Symcon-Design, 1 = Dunkel, 2 = Hell)
+function applyTheme(theme) {
+    var root = document.documentElement;
+    root.classList.toggle('theme-dark', theme === 1);
+    root.classList.toggle('theme-light', theme === 2);
+}
+
+(function () {
+    var MODES = {
+        0: ['Automatik aus', 'var(--off)'],
+        1: ['Sonnig – Akku voll nutzen', 'var(--ok)'],
+        2: ['Ausgeglichen', 'var(--info)'],
+        3: ['Sparbetrieb – Reserve halten', 'var(--warn)'],
+        4: ['Frostreserve', 'var(--info)'],
+        5: ['Pausiert', 'var(--off)'],
+        6: ['Keine Prognose', 'var(--bad)'],
+        7: ['Hub fehlt', 'var(--bad)']
+    };
+    var SVG = 'http://www.w3.org/2000/svg';
+
+    function has(v) { return v !== null && v !== undefined && !isNaN(v); }
+    function num(v, d) { return Number(v).toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+    function text(id, t) { var n = document.getElementById(id); if (n) n.textContent = t; }
+    function value(id, v, unit) {
+        var n = document.getElementById(id);
+        n.textContent = '';
+        if (v === null) { n.textContent = '–'; return; }
+        n.appendChild(document.createTextNode(v));
+        var s = document.createElement('small');
+        s.textContent = unit;
+        n.appendChild(s);
+    }
+    function hhmm(ts) { var d = new Date(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+
+    function el(name, attrs, cls) {
+        var n = document.createElementNS(SVG, name);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (cls) n.setAttribute('class', cls);
+        return n;
+    }
+
+    function chart(s) {
+        var svg = document.getElementById('svg');
+        var plot = svg.parentNode;
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+        var bars = s.bars || [];
+        if (!bars.length) { text('peak', ''); return; }
+        // echte Pixelgröße statt gestrecktem viewBox, damit Schrift und Balken nicht verzerren
+        var W = Math.max(120, Math.round(plot.clientWidth || 360)), H = Math.max(30, Math.round(plot.clientHeight || 80)), top = 4, bottom = 14;
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        var t0 = bars[0][0] - 3600, t1 = bars[bars.length - 1][0];
+        var span = Math.max(3600, t1 - t0);
+        var max = 0;
+        bars.forEach(function (b) { if (b[1] > max) max = b[1]; });
+        var base = (s.base || 0) / 1000;
+        var scaleMax = Math.max(max, base * 1.2, 0.1);
+        var x = function (t) { return (t - t0) / span * W; };
+        var y = function (kw) { return H - bottom - kw / scaleMax * (H - top - bottom); };
+
+        // Nacht schattieren
+        var rise = s.rise || [], set = s.set || [];
+        for (var i = 0; i < set.length; i++) {
+            var from = set[i], to = rise[i + 1] || t1;
+            if (i === 0 && rise[0] > t0) svg.appendChild(el('rect', { x: 0, y: 0, width: Math.max(0, x(rise[0])), height: H - bottom }, 'night'));
+            if (to < t0 || from > t1) continue;
+            var a = Math.max(0, x(from)), b = Math.min(W, x(to));
+            if (b > a) svg.appendChild(el('rect', { x: a, y: 0, width: b - a, height: H - bottom }, 'night'));
+        }
+
+        var bw = W / (span / 3600);
+        bars.forEach(function (b) {
+            if (b[1] <= 0) return;
+            var xx = x(b[0] - 3600);
+            svg.appendChild(el('rect', { x: xx + 0.5, y: y(b[1]), width: Math.max(1, bw - 1), height: H - bottom - y(b[1]), rx: 1 }, 'pv'));
+        });
+
+        if (base > 0) svg.appendChild(el('line', { x1: 0, x2: W, y1: y(base), y2: y(base) }, 'base'));
+
+        var now = Date.now() / 1000;
+        if (now > t0 && now < t1) svg.appendChild(el('line', { x1: x(now), x2: x(now), y1: 0, y2: H - bottom }, 'now'));
+
+        // Beschriftung alle 6 Stunden
+        var step = W < 260 ? 43200 : 21600;
+        var start = Math.ceil(t0 / step) * step;
+        for (var t = start; t < t1; t += step) {
+            if (x(t) < 14 || x(t) > W - 14) continue;
+            var lbl = el('text', { x: x(t), y: H - 2, 'text-anchor': 'middle' });
+            lbl.textContent = hhmm(t);
+            svg.appendChild(lbl);
+        }
+        text('peak', 'max. ' + num(max * 1000, 0) + ' W');
+    }
+
+    function render(s) {
+        var m = MODES[s.mode] || MODES[0];
+        text('mode', m[0]);
+        document.documentElement.style.setProperty('--zs-mode', m[1]);
+        text('offNote', s.active ? '' : 'Automatik aus');
+
+        var soc = has(s.soc) ? Math.max(0, Math.min(100, s.soc)) : null;
+        text('soc', soc === null ? '–' : num(soc, 0) + ' %');
+        text('socLabel', 'Ladezustand' + (has(s.capacity) ? ' · ' + num(s.capacity, 2) + ' kWh' : ''));
+        var target = has(s.hubMin) && s.mode >= 5 ? s.hubMin : s.target;
+        document.getElementById('fill').style.width = (soc || 0) + '%';
+        document.getElementById('reserve').style.width = (target || 0) + '%';
+        document.getElementById('mark').style.left = 'calc(' + (target || 0) + '% - 1px)';
+        text('targetText', 'Entladegrenze ' + (has(target) ? num(target, 0) + ' %' : '–'));
+
+        var now = Date.now() / 1000;
+        var tomorrow = !(s.rise && s.rise[0] && now < s.rise[0]);
+        text('dayLabel', tomorrow ? 'PV morgen' : 'PV heute');
+        value('day', has(tomorrow ? s.tomorrow : s.today) ? num(tomorrow ? s.tomorrow : s.today, 1) : null, 'kWh');
+        value('refill', has(s.refill) ? num(s.refill, 0) : null, '%');
+        value('out', has(s.output) ? num(s.output, 0) : null, 'W');
+        value('temp', has(s.temp) ? num(s.temp, 1) : null, '°C');
+        text('reason', s.reason || '');
+        chart(s);
+    }
+
+    var state = {};
+    window.handleMessage = function (data) {
+        try {
+            var d = typeof data === 'string' ? JSON.parse(data) : data;
+            if (typeof d.theme === 'number') applyTheme(d.theme);
+            for (var k in d) state[k] = d[k];
+            render(state);
+        } catch (e) { }
+    };
+
+    // Jetzt-Linie und „heute/morgen“ einmal pro Minute nachziehen – nur, solange die Kachel sichtbar ist
+    var timer = null;
+    function tick() { if (state.mode !== undefined) render(state); }
+    function visibility() {
+        if (document.hidden) { if (timer) { clearInterval(timer); timer = null; } }
+        else if (!timer) { timer = setInterval(tick, 60000); }
+    }
+    document.addEventListener('visibilitychange', visibility);
+    window.addEventListener('resize', tick);
+    visibility();
+
+    window.handleMessage(__INITIAL_STATE__);
+})();
+</script>

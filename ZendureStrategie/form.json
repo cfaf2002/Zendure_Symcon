@@ -1,0 +1,202 @@
+{
+    "elements": [
+        {
+            "type": "Label",
+            "caption": "Wettergeführte Speicherstrategie: Die PV-Prognose für den nächsten Sonnentag bestimmt die Entladegrenze des Hubs. Wenig Sonne in Sicht → Reserve halten, viel Sonne → Akku nachts weit nutzen."
+        },
+        {
+            "type": "SelectInstance",
+            "name": "HubInstance",
+            "caption": "Zendure SolarFlow Hub",
+            "validModules": ["{EEA9BD1E-4878-4A2D-9165-F23C8A4BA200}"]
+        },
+        {
+            "type": "NumberSpinner",
+            "name": "PackCapacity",
+            "caption": "Kapazität je Akku (AB2000 = 1,92 · AB1000 = 0,96)",
+            "suffix": "kWh",
+            "digits": 2,
+            "minimum": 0.1,
+            "maximum": 10
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Solarmodule am Hub",
+            "expanded": true,
+            "items": [
+                {
+                    "type": "Label",
+                    "caption": "Nur die Module, die über den Hub laden (z. B. an PV 2 und PV 4). Ausrichtung: 0° = Süd, −90° = Ost, 90° = West. Neigung: 0° = waagerecht."
+                },
+                {
+                    "type": "RowLayout",
+                    "items": [
+                        { "type": "NumberSpinner", "name": "Peak1", "caption": "Fläche 1: Leistung", "suffix": "Wp", "minimum": 0, "maximum": 10000 },
+                        { "type": "NumberSpinner", "name": "Tilt1", "caption": "Neigung", "suffix": "°", "minimum": 0, "maximum": 90 },
+                        { "type": "NumberSpinner", "name": "Azimuth1", "caption": "Ausrichtung", "suffix": "°", "minimum": -180, "maximum": 180 }
+                    ]
+                },
+                {
+                    "type": "RowLayout",
+                    "items": [
+                        { "type": "NumberSpinner", "name": "Peak2", "caption": "Fläche 2: Leistung (0 = keine)", "suffix": "Wp", "minimum": 0, "maximum": 10000 },
+                        { "type": "NumberSpinner", "name": "Tilt2", "caption": "Neigung", "suffix": "°", "minimum": 0, "maximum": 90 },
+                        { "type": "NumberSpinner", "name": "Azimuth2", "caption": "Ausrichtung", "suffix": "°", "minimum": -180, "maximum": 180 }
+                    ]
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "PerformanceRatio",
+                    "caption": "Systemwirkungsgrad (Wärme, Kabel, Hub, Laden)",
+                    "suffix": "%",
+                    "minimum": 10,
+                    "maximum": 100
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "UseSymconLocation",
+                    "caption": "Standort aus der Standort-Instanz von Symcon"
+                },
+                {
+                    "type": "SelectLocation",
+                    "name": "Location",
+                    "caption": "Eigener Standort (wenn oben aus)"
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Strategie",
+            "items": [
+                {
+                    "type": "NumberSpinner",
+                    "name": "BaseLoad",
+                    "caption": "Grundlast des Hauses",
+                    "suffix": "W",
+                    "minimum": 0,
+                    "maximum": 2400
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "MinSocSunny",
+                    "caption": "Entladegrenze, wenn der Akku sicher wieder voll wird",
+                    "suffix": "%",
+                    "minimum": 0,
+                    "maximum": 50
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "MinSocDull",
+                    "caption": "Entladegrenze bei wenig Sonne (≤ 25 % Nachladung)",
+                    "suffix": "%",
+                    "minimum": 0,
+                    "maximum": 50
+                },
+                {
+                    "type": "Label",
+                    "caption": "Dazwischen wird stufenlos (in 5-%-Schritten) gerechnet. Höchstwert des Hubs: 50 %."
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "UseFrost",
+                    "caption": "Frostreserve bei kaltem Akku"
+                },
+                {
+                    "type": "RowLayout",
+                    "items": [
+                        { "type": "NumberSpinner", "name": "FrostTemperature", "caption": "Akkutemperatur unter", "suffix": "°C", "digits": 1, "minimum": -20, "maximum": 15 },
+                        { "type": "NumberSpinner", "name": "FrostMinSoc", "caption": "Entladegrenze mindestens", "suffix": "%", "minimum": 0, "maximum": 50 }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Ausgangsleistung",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "ControlOutput",
+                    "caption": "Ausgangsleistung steuern (tagsüber Grundlast, nachts so verteilt, dass der Akku bis zum Sonnenaufgang reicht)"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Nicht einschalten, wenn bereits ein anderes Skript (z. B. Nulleinspeisung) die Ausgangsleistung regelt."
+                },
+                {
+                    "type": "Select",
+                    "name": "OutputMethod",
+                    "caption": "Steuern über",
+                    "options": [
+                        { "caption": "Ausgangsleistung (Limit)", "value": 0 },
+                        { "caption": "Entladeleistung vorgeben (Geräteautomatik)", "value": 1 }
+                    ]
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "MinOutput",
+                    "caption": "Nachts mindestens",
+                    "suffix": "W",
+                    "minimum": 0,
+                    "maximum": 2400
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Freigabe und Intervall",
+            "items": [
+                {
+                    "type": "SelectVariable",
+                    "name": "ReleaseVariable",
+                    "caption": "Freigabe-Variable (optional, z. B. zentraler Automatik- oder Urlaubsschalter)"
+                },
+                {
+                    "type": "Select",
+                    "name": "ReleaseMode",
+                    "caption": "Automatik läuft, wenn die Variable",
+                    "options": [
+                        { "caption": "An ist", "value": 0 },
+                        { "caption": "Aus ist", "value": 1 }
+                    ]
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "EvaluateInterval",
+                    "caption": "Auswerten alle (Prognose stündlich)",
+                    "suffix": "Minuten",
+                    "minimum": 1,
+                    "maximum": 60
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Kachel",
+            "items": [
+                {
+                    "type": "Select",
+                    "name": "TileTheme",
+                    "caption": "Farbschema der Kachel",
+                    "options": [
+                        { "caption": "Symcon-Design (Farben der Visualisierung)", "value": 0 },
+                        { "caption": "Dunkel", "value": 1 },
+                        { "caption": "Hell", "value": 2 }
+                    ]
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "type": "Button",
+            "caption": "Prognose holen und jetzt auswerten",
+            "onClick": "IPS_RequestAction($id, 'Refresh', 0);"
+        }
+    ],
+    "status": [
+        { "code": 102, "icon": "active", "caption": "Aktiv" },
+        { "code": 104, "icon": "inactive", "caption": "Bitte einen Zendure SolarFlow Hub wählen" },
+        { "code": 201, "icon": "error", "caption": "Bitte die Leistung der Solarmodule am Hub eintragen" }
+    ]
+}

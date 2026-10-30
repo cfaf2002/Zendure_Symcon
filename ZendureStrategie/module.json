@@ -1,0 +1,12 @@
+{
+    "id": "{0E7766B4-A4B8-43EA-B79B-6DCB9B5BE75F}",
+    "name": "Zendure Speicherstrategie",
+    "type": 3,
+    "vendor": "Zendure",
+    "aliases": [],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "ZENDS",
+    "url": "https://github.com/cfaf2002/Zendure_Symcon"
+}
