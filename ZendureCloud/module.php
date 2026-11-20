@@ -29,6 +29,7 @@ class ZendureCloud extends IPSModuleStrict
     {
         parent::Create();
 
+        $this->RegisterPropertyBoolean('Active', true);
         $this->RegisterPropertyString('AppToken', '');
         $this->RegisterPropertyBoolean('AutoConfigureParent', true);
         $this->RegisterPropertyInteger('RefreshHours', 12);
@@ -50,15 +51,43 @@ class ZendureCloud extends IPSModuleStrict
             return;
         }
 
+        // Schaltbar in der Visualisierung: Verbindung zur Zendure-Cloud an/aus
+        $this->RegisterVariableBoolean('Active', 'Verbindung zur Zendure-Cloud', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH, 'ICON' => 'cloud'], 0);
+        $this->EnableAction('Active');
+        $active = $this->ReadPropertyBoolean('Active');
+        if ($this->GetValue('Active') !== $active) {
+            $this->SetValue('Active', $active);
+        }
+
+        if (!$active) {
+            // Ausgeschaltet: keine Abrufe, MQTT-Verbindung trennen (Client Socket schließen)
+            $this->SetTimerInterval('Refresh', 0);
+            $this->SetSocketOpen(false);
+            $this->SetStatus(104);
+            return;
+        }
+
         if (trim($this->ReadPropertyString('AppToken')) === '') {
             $this->SetTimerInterval('Refresh', 0);
             $this->SetStatus(104);
             return;
         }
 
+        // Wieder eingeschaltet: Client Socket öffnen (falls er vorher getrennt wurde)
+        $this->SetSocketOpen(true);
+
         // Abruf kurz nach dem Übernehmen über den Timer, damit das Speichern nicht bis zu 30 s blockiert
         $this->SetBuffer('RetryCount', '0');
         $this->SetTimerInterval('Refresh', 1000);
+    }
+
+    public function RequestAction(string $Ident, mixed $Value): void
+    {
+        if ($Ident === 'Active') {
+            $this->SetActive((bool) $Value);
+            return;
+        }
+        throw new Exception('Unbekannte Aktion: ' . $Ident);
     }
 
     public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
@@ -74,10 +103,27 @@ class ZendureCloud extends IPSModuleStrict
     // ---------------------------------------------------------------------
 
     /**
+     * Verbindung zur Zendure-Cloud ein- oder ausschalten (z. B. um ein anderes System mit demselben
+     * Cloud-Key zu nutzen – Zendure erlaubt pro Konto nur eine MQTT-Verbindung).
+     */
+    public function SetActive(bool $Active): bool
+    {
+        if ($this->ReadPropertyBoolean('Active') !== $Active) {
+            IPS_SetProperty($this->InstanceID, 'Active', $Active);
+            IPS_ApplyChanges($this->InstanceID);
+        }
+        return true;
+    }
+
+    /**
      * Fragt Geräteliste und MQTT-Zugangsdaten bei der Zendure-Cloud ab.
      */
     public function RefreshDevices(): bool
     {
+        if (!$this->ReadPropertyBoolean('Active')) {
+            $this->SendDebug('API', 'Ausgeschaltet – kein Abruf', 0);
+            return false;
+        }
         $token = trim($this->ReadPropertyString('AppToken'));
         if ($token === '') {
             $this->SetTimerInterval('Refresh', 0);
@@ -173,6 +219,9 @@ class ZendureCloud extends IPSModuleStrict
      */
     public function SetupMqttConnection(): string
     {
+        if (!$this->ReadPropertyBoolean('Active')) {
+            return 'Die Verbindung zur Zendure-Cloud ist ausgeschaltet. Bitte zuerst „Aktiv“ einschalten.';
+        }
         $info = json_decode($this->ReadAttributeString('MqttInfo'), true);
         if (empty($info['host'])) {
             if (!$this->RefreshDevices()) {
@@ -252,6 +301,10 @@ class ZendureCloud extends IPSModuleStrict
             }
         }
 
+        if (!$this->ReadPropertyBoolean('Active')) {
+            $this->SendDebug('TX', 'Ausgeschaltet – nichts gesendet', 0);
+            return '';
+        }
         if (!$this->HasActiveParent()) {
             $this->SendDebug('TX', 'Kein aktiver MQTT-Client verbunden', 0);
             return '';
@@ -394,6 +447,30 @@ class ZendureCloud extends IPSModuleStrict
      * Die Eigenschaftsnamen werden aus der vorhandenen Konfiguration ermittelt,
      * damit es über Symcon-Versionen hinweg funktioniert.
      */
+    /** Öffnet oder schließt den Client Socket unter dem MQTT-Client (trennt bzw. startet die Verbindung). */
+    private function SetSocketOpen(bool $open): void
+    {
+        $mqttID = $this->GetParentID();
+        if ($mqttID === 0 || !IPS_InstanceExists($mqttID)) {
+            return;
+        }
+        $socketID = (int) IPS_GetInstance($mqttID)['ConnectionID'];
+        if ($socketID === 0 || !IPS_InstanceExists($socketID)) {
+            return;
+        }
+        $config = json_decode(IPS_GetConfiguration($socketID), true) ?: [];
+        if (!array_key_exists('Open', $config) || (bool) $config['Open'] === $open) {
+            return;
+        }
+        // Nicht öffnen, solange noch kein Server eingetragen ist
+        if ($open && trim((string) ($config['Host'] ?? '')) === '') {
+            return;
+        }
+        IPS_SetProperty($socketID, 'Open', $open);
+        IPS_ApplyChanges($socketID);
+        $this->SendDebug('MQTT', $open ? 'Client Socket geöffnet' : 'Client Socket geschlossen – Verbindung getrennt', 0);
+    }
+
     private function UpdateParentConfiguration(int $mqttID): string
     {
         $info = json_decode($this->ReadAttributeString('MqttInfo'), true);

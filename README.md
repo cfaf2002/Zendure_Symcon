@@ -2,7 +2,7 @@
 
 [![IP-Symcon ab 8.1](https://img.shields.io/badge/IP--Symcon-ab_8.1-0b6fb3.svg)](https://www.symcon.de)
 [![Optimiert für Symcon 9.0](https://img.shields.io/badge/optimiert_f%C3%BCr-Symcon_9.0-0b6fb3.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v81-v90-q1-2026/)
-[![Modul-Version 2.8 (Build 20)](https://img.shields.io/badge/Modul--Version-2.8_(Build_20)-informational.svg)](library.json)
+[![Modul-Version 2.9 (Build 21)](https://img.shields.io/badge/Modul--Version-2.9_(Build_21)-informational.svg)](library.json)
 [![Tests](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml/badge.svg)](https://github.com/cfaf2002/Zendure_Symcon/actions/workflows/tests.yml)
 [![PHP 8.3 und 8.5](https://img.shields.io/badge/PHP-8.3_%7C_8.5-777bb4.svg?logo=php&logoColor=white)](https://www.php.net)
 [![SDK: IPSModuleStrict](https://img.shields.io/badge/SDK-IPSModuleStrict-success.svg)](https://www.symcon.de/de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/module/)
@@ -42,6 +42,12 @@ Autor: Armin Frohwerk
 2. Button **MQTT-Verbindung einrichten**: legt bei Bedarf einen *MQTT Client* mit *Client Socket* an und trägt Server, Benutzer, Passwort, Client-ID und die Abonnements ein.
    Falls etwas nicht automatisch gesetzt werden kann, zeigt **Zugangsdaten anzeigen** Server, Port, Client-ID, Benutzer und Abonnements zum manuellen Eintragen. Das Passwort wird aus Sicherheitsgründen nicht angezeigt; es trägt „MQTT-Verbindung einrichten“ selbst ein.
 3. Instanz **Zendure Configurator** anlegen (hängt sich an *Zendure Cloud*) und den Hub erstellen.
+
+### Verbindung ein- und ausschalten
+
+Zendure erlaubt pro Konto nur **eine** MQTT-Verbindung. Meldet sich ein zweites System mit demselben Cloud-Key an (z. B. eine andere Hausautomation), werfen sich beide gegenseitig raus – der Client Socket meldet dann „Fehler beim Lesen: End of file“ und wird als fehlerhaft markiert.
+
+Mit dem Schalter **„Aktiv“** in der Instanz *Zendure Cloud* lässt sich die Verbindung sauber abschalten: Der Client Socket wird geschlossen, es wird nichts mehr bei Zendure abgerufen oder gesendet. Beim Einschalten öffnet die Instanz den Socket wieder und holt die Zugangsdaten neu. Umschalten geht auch über die Variable **„Verbindung zur Zendure-Cloud“** (Schalter, auch in der Visualisierung) oder per Skript mit `ZENDC_SetActive`.
 
 ## Einrichtung – lokal (ohne Cloud)
 
@@ -150,6 +156,7 @@ ZENDS_Evaluate(int $InstanzID);                     // mit vorhandener Prognose 
 ZENDS_GetForecast(int $InstanzID);                  // stündliche PV-Prognose (kW) als JSON
 ZENDS_ResetCheck(int $InstanzID);                   // Verlauf des Prognose-Checks löschen
 
+ZENDC_SetActive(int $InstanzID, bool $Aktiv);       // Cloud-Verbindung ein/aus
 ZENDC_RefreshDevices(int $InstanzID);
 ZENDC_SetupMqttConnection(int $InstanzID);
 ZENDC_GetConnectionInfo(int $InstanzID);
@@ -170,6 +177,7 @@ ZENDC_GetConnectionInfo(int $InstanzID);
 
 | Version | Build | Datum | Beschreibung |
 |---|---|---|---|
+| 2.9 | 21 | 20.11.2026 | Zendure Cloud: neuer Schalter **„Aktiv“** (plus Variable „Verbindung zur Zendure-Cloud“ und Befehl `ZENDC_SetActive`). Ausgeschaltet schließt die Instanz den Client Socket, ruft nichts mehr ab und sendet nichts – so kann ein anderes System denselben Cloud-Key nutzen, ohne dass sich beide gegenseitig trennen |
 | 2.8 | 20 | 30.10.2026 | Speicherstrategie: **Prognose-Check** – vergleicht jeden Abend die Prognose mit dem Ertrag des Hubs, wertet die letzten 14 Tage aus und gibt bei mehr als 10 % Abweichung eine Empfehlung für den Systemwirkungsgrad (Variable, Kachel, Meldungsfenster, optional Push über die Kachel-Visualisierung) oder korrigiert die Prognose auf Wunsch automatisch; Button und Befehl `ZENDS_ResetCheck` |
 | 2.7 | 19 | 30.10.2026 | Speicherstrategie behoben: eigene Kachel wurde in der Visualisierung nicht angezeigt (Visualisierungstyp fehlte); „Betriebsart“ zeigte eine Zahl statt Text; ohne Steuerung der Ausgangsleistung zieht die Nachladung die Grundlast nicht mehr ab (der Hub lädt dann selbst, wie er will) |
 | 2.7 | 18 | 30.10.2026 | Speicherstrategie: Kachel im Stil der Hub-Kachel neu gestaltet (Aurora-Hintergrund in der Farbe der Betriebsart, Ladezustandsring mit Reserve-Ring, Glas-Karten, Prognose mit Verlaufsbalken); neue Einstellung „Hintergrund“ (Aurora oder Keiner); Prognoseabruf blockiert „Übernehmen“ nicht mehr |
