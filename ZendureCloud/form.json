@@ -1,6 +1,15 @@
 {
     "elements": [
         {
+            "type": "CheckBox",
+            "name": "Active",
+            "caption": "Aktiv – mit der Zendure-Cloud verbinden"
+        },
+        {
+            "type": "Label",
+            "caption": "Zendure erlaubt pro Konto nur eine Verbindung. Nutzt ein anderes System denselben Cloud-Key, hier ausschalten: Die MQTT-Verbindung wird getrennt und nichts mehr abgerufen. Umschalten geht auch über die Variable „Verbindung zur Zendure-Cloud“ oder ZENDC_SetActive."
+        },
+        {
             "type": "Label",
             "caption": "Cloud-Key aus der Zendure-App (Token für die Home-Assistant-Integration) hier einfügen."
         },
@@ -42,9 +51,25 @@
         }
     ],
     "status": [
-        { "code": 102, "icon": "active", "caption": "Verbunden mit der Zendure-Cloud" },
-        { "code": 104, "icon": "inactive", "caption": "Bitte Cloud-Key eintragen" },
-        { "code": 201, "icon": "error", "caption": "Cloud-Key ungültig oder von Zendure abgelehnt" },
-        { "code": 202, "icon": "error", "caption": "Zendure-Cloud nicht erreichbar" }
+        {
+            "code": 102,
+            "icon": "active",
+            "caption": "Verbunden mit der Zendure-Cloud"
+        },
+        {
+            "code": 104,
+            "icon": "inactive",
+            "caption": "Ausgeschaltet oder kein Cloud-Key eingetragen"
+        },
+        {
+            "code": 201,
+            "icon": "error",
+            "caption": "Cloud-Key ungültig oder von Zendure abgelehnt"
+        },
+        {
+            "code": 202,
+            "icon": "error",
+            "caption": "Zendure-Cloud nicht erreichbar"
+        }
     ]
 }
